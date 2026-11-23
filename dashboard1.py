@@ -1,6 +1,7 @@
 
 import json
 from html import escape
+from textwrap import dedent
 
 import streamlit as st
 
@@ -8,1087 +9,1800 @@ from core.pipeline import verify_offer
 from core.pdf_extractor import extract_pdf_text
 from core.pdf_report import generate_evidence_pdf
 from core.privacy import mask_sensitive_data
-from core.schemas import FindingType
 
 
-# ==================================================
-# PAGE CONFIGURATION
-# ==================================================
+# ============================================================
+# 1. PAGE CONFIG
+# ============================================================
 
 st.set_page_config(
-    page_title="Offer Evidence Verifier | Trust Console",
+    page_title="Offer Evidence Verifier",
     page_icon="🛡️",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 
-# ==================================================
-# DESIGN SYSTEM
-# ==================================================
+# ============================================================
+# 2. PREMIUM PROFESSIONAL CSS
+# ============================================================
 
 st.markdown(
     """
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 :root {
-    --background: #F8F7F4;
-    --surface: #FFFFFF;
-    --navy: #172B4D;
-    --teal: #0F766E;
-    --text: #334155;
-    --muted: #64748B;
-    --border: #DFE5EC;
+    --bg: #F7F8FC;
+    --white: #FFFFFF;
+    --primary: #5046E5;
+    --primary-dark: #4038C7;
+    --primary-soft: #F0F1FF;
+    --heading: #19243A;
+    --body: #596781;
+    --muted: #8491A7;
+    --border: #E1E6EF;
+    --green: #087F5B;
+    --orange: #A86408;
+    --red: #C0394B;
+}
+
+html,
+body,
+[class*="css"],
+.stApp,
+.stApp button,
+.stApp input,
+.stApp textarea {
+    font-family: 'Inter', sans-serif !important;
 }
 
 .stApp,
 [data-testid="stAppViewContainer"],
 [data-testid="stMain"] {
-    background: var(--background);
-    color: var(--text);
+    background: var(--bg) !important;
+    color: var(--heading) !important;
 }
 
 .block-container {
-    max-width: 1280px;
-    padding-top: 1.5rem;
-    padding-bottom: 3rem;
+    max-width: 1440px !important;
+    padding-top: 1.15rem !important;
+    padding-bottom: 3rem !important;
+}
+
+[data-testid="stSidebar"],
+[data-testid="stSidebarCollapsedControl"] {
+    display: none !important;
+}
+
+header[data-testid="stHeader"] {
+    background: transparent !important;
 }
 
 .stApp h1,
 .stApp h2,
-.stApp h3 {
-    color: var(--navy);
-    letter-spacing: -0.5px;
+.stApp h3,
+.stApp h4 {
+    color: var(--heading) !important;
+    letter-spacing: -0.035em;
 }
 
 .stApp p,
-.stApp label,
-.stApp li {
-    color: var(--text);
+.stApp li,
+.stApp label {
+    color: var(--body);
 }
 
-/* Sidebar */
-
-[data-testid="stSidebar"] {
-    background: #FFFFFF;
-    border-right: 1px solid var(--border);
+[data-testid="stWidgetLabel"] p,
+[data-testid="stRadio"] label p,
+[data-testid="stCheckbox"] label p {
+    color: #293751 !important;
+    font-weight: 600 !important;
 }
 
-[data-testid="stSidebar"] h1,
-[data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3 {
-    color: var(--navy);
+[data-testid="stCaptionContainer"] p {
+    color: var(--muted) !important;
 }
-
-[data-testid="stSidebar"] p,
-[data-testid="stSidebar"] li {
-    color: var(--text);
-}
-
-/* Inputs */
 
 .stTextArea textarea,
 .stTextInput input {
     background: #FFFFFF !important;
-    color: #172B4D !important;
-    -webkit-text-fill-color: #172B4D !important;
-    border: 1px solid #A9B8C9 !important;
-    border-radius: 10px !important;
-    caret-color: #0F766E !important;
+    color: #19243A !important;
+    -webkit-text-fill-color: #19243A !important;
+    border: 1px solid #D8DFEB !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+    line-height: 1.7 !important;
 }
 
 .stTextArea textarea::placeholder,
 .stTextInput input::placeholder {
-    color: #64748B !important;
-    -webkit-text-fill-color: #64748B !important;
-    opacity: 1 !important;
+    color: #98A5B8 !important;
+    -webkit-text-fill-color: #98A5B8 !important;
 }
 
 .stTextArea textarea:focus,
 .stTextInput input:focus {
-    border-color: #0F766E !important;
+    border-color: #6258DD !important;
+    box-shadow: 0 0 0 2px #6258DD22 !important;
 }
 
-/* Radio / Checkbox */
-
-[data-testid="stRadio"] label p,
-[data-testid="stCheckbox"] label p {
-    color: #172B4D !important;
+div.stButton > button {
+    min-height: 45px !important;
+    border-radius: 11px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease;
 }
-
-/* Buttons */
 
 div.stButton > button[kind="primary"] {
-    background: #0F766E !important;
-    border: 1px solid #0F766E !important;
+    background: #5046E5 !important;
+    border: 1px solid #5046E5 !important;
     color: #FFFFFF !important;
-    border-radius: 10px !important;
-    min-height: 48px;
-    font-weight: 700;
+    box-shadow: 0 5px 16px #5046E51A;
 }
 
-div.stButton > button[kind="primary"] *,
+div.stButton > button[kind="primary"]:hover {
+    background: #4038C7 !important;
+    border-color: #4038C7 !important;
+}
+
 div.stButton > button[kind="primary"] p {
     color: #FFFFFF !important;
 }
 
-div.stButton > button[kind="primary"]:hover {
-    background: #115E59 !important;
-    border-color: #115E59 !important;
-}
-
-div.stButton > button[kind="secondary"],
-div.stDownloadButton > button {
+div.stButton > button[kind="secondary"] {
     background: #FFFFFF !important;
-    color: #172B4D !important;
-    border: 1px solid #C5D0DC !important;
-    border-radius: 10px !important;
-    min-height: 44px;
+    border: 1px solid #DCE2ED !important;
+    color: #293751 !important;
 }
 
-div.stButton > button[kind="secondary"] *,
-div.stDownloadButton > button * {
-    color: #172B4D !important;
+div.stButton > button[kind="secondary"] p {
+    color: #293751 !important;
 }
 
-div.stDownloadButton > button:hover,
-div.stButton > button[kind="secondary"]:hover {
-    background: #EFF8F6 !important;
-    border-color: #0F766E !important;
+[data-testid="stFileUploader"] {
+    background: #FAFBFF !important;
+    border: 1px dashed #BCC7DD !important;
+    border-radius: 15px !important;
+    padding: 10px !important;
 }
 
-/* Header */
+[data-testid="stFileUploader"] section {
+    background: #FAFBFF !important;
+}
+
+[data-testid="stFileUploader"] button {
+    background: #FFFFFF !important;
+    color: #5046E5 !important;
+    border: 1px solid #DCE2ED !important;
+}
+
+[data-testid="stExpander"] {
+    background: #FFFFFF !important;
+    border: 1px solid #E1E6EF !important;
+    border-radius: 12px !important;
+}
+
+[data-testid="stExpander"] summary p {
+    color: #293751 !important;
+}
+
+[data-testid="stMetric"] {
+    background: #FFFFFF !important;
+    border: 1px solid #E1E6EF !important;
+    border-radius: 15px !important;
+    padding: 18px !important;
+}
+
+[data-testid="stMetricLabel"] p {
+    color: #75839B !important;
+    font-size: 12px !important;
+}
+
+[data-testid="stMetricValue"] {
+    color: #19243A !important;
+    font-weight: 800 !important;
+}
+
+[data-testid="stDownloadButton"] button {
+    width: 100%;
+    min-height: 49px !important;
+    border-radius: 11px !important;
+    background: #FFFFFF !important;
+    border: 1px solid #DCE2ED !important;
+}
+
+[data-testid="stDownloadButton"] button p {
+    color: #293751 !important;
+}
+
+hr {
+    border-color: #E1E6EF !important;
+}
+
+/* TOP NAVIGATION */
 
 .topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 20px;
+    padding: 13px 0 22px;
+    border-bottom: 1px solid #E1E6EF;
+    margin-bottom: 28px;
 }
 
-.brand-title {
-    color: #172B4D;
-    font-size: 25px;
-    font-weight: 800;
-    letter-spacing: -0.8px;
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    font-size: 18px;
+    font-weight: 750;
+    letter-spacing: -0.7px;
+    color: #19243A;
 }
 
-.brand-subtitle {
-    color: #64748B;
-    font-size: 13px;
-    margin-top: 3px;
-}
-
-.topbar-badge {
-    color: #0F766E;
-    background: #E8F6F2;
-    border: 1px solid #BCE6D9;
-    padding: 8px 12px;
-    border-radius: 30px;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-/* Hero */
-
-.hero {
-    background: linear-gradient(
-        115deg,
-        #172B4D 0%,
-        #234765 65%,
-        #176C74 100%
-    );
-    padding: 30px 34px;
-    border-radius: 18px;
-    margin-bottom: 24px;
-    box-shadow: 0 8px 24px rgba(23,43,77,0.10);
-}
-
-.hero-eyebrow {
-    color: #99F6E4;
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 1.5px;
-    margin-bottom: 12px;
-}
-
-.hero-title {
+.brand-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 39px;
+    height: 39px;
+    background: #5046E5;
     color: #FFFFFF;
-    font-size: clamp(26px, 3.4vw, 35px);
-    font-weight: 800;
-    line-height: 1.25;
-    margin-bottom: 10px;
+    border-radius: 12px;
+    font-size: 21px;
 }
 
-.hero-description {
-    color: #E2E8F0;
+.nav-caption {
+    color: #7B88A0;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* PAGE TYPOGRAPHY */
+
+.eyebrow {
+    color: #5046E5;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    margin-bottom: 11px;
+}
+
+.page-title {
+    color: #19243A;
+    font-size: clamp(30px, 3.2vw, 42px);
+    font-weight: 750;
+    letter-spacing: -1.5px;
+    line-height: 1.2;
+    margin-bottom: 14px;
+}
+
+.page-desc {
+    color: #66758E;
     font-size: 14px;
-    line-height: 1.75;
-    max-width: 760px;
-}
-
-/* Sections */
-
-.section-eyebrow {
-    color: #0F766E;
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 1.4px;
-    text-transform: uppercase;
-    margin: 22px 0 7px;
+    line-height: 1.85;
+    max-width: 750px;
+    margin-bottom: 24px;
 }
 
 .section-title {
-    color: #172B4D;
-    font-size: 23px;
-    font-weight: 750;
-    margin-bottom: 14px;
+    color: #19243A;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    margin: 27px 0 15px;
 }
 
-/* Workflow */
+/* CONTENT PANELS */
 
-.workflow {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 20px;
-}
-
-.workflow-step {
+.panel {
     background: #FFFFFF;
-    border: 1px solid #DFE5EC;
-    border-radius: 10px;
-    padding: 10px 13px;
-    color: #52647B;
-    font-size: 12px;
-    font-weight: 600;
+    border: 1px solid #E1E6EF;
+    border-radius: 17px;
+    padding: 23px;
+    margin-bottom: 17px;
+    box-shadow: 0 5px 20px #17243C06;
 }
 
-.workflow-step.active {
-    background: #E8F6F2;
-    border-color: #9AD6C6;
-    color: #0F766E;
-}
-
-/* Metric cards */
-
-.metric-card {
-    background: #FFFFFF;
-    border: 1px solid #DFE5EC;
-    border-radius: 15px;
-    padding: 18px;
-    min-height: 132px;
-    box-shadow: 0 3px 10px rgba(23,43,77,0.03);
-}
-
-.metric-label {
-    color: #52647B;
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 10px;
-}
-
-.metric-value {
-    font-size: 32px;
-    font-weight: 800;
-    line-height: 1.1;
-}
-
-.metric-caption {
-    color: #64748B;
-    font-size: 11px;
-    margin-top: 9px;
-}
-
-/* Evidence cards */
-
-.evidence-card {
-    background: #FFFFFF;
-    border: 1px solid #DFE5EC;
-    border-radius: 14px;
-    padding: 20px;
-    margin-bottom: 14px;
-    box-shadow: 0 3px 10px rgba(23,43,77,0.03);
-}
-
-.evidence-heading {
-    color: #172B4D;
+.panel-title {
+    color: #19243A;
     font-size: 16px;
-    font-weight: 750;
-    margin-bottom: 10px;
+    font-weight: 700;
+    letter-spacing: -0.35px;
+    margin-bottom: 9px;
 }
 
-.evidence-badge {
+.panel-text {
+    color: #65738B;
+    font-size: 13px;
+    line-height: 1.85;
+}
+
+.panel-text p {
+    margin: 8px 0;
+    color: #65738B;
+}
+
+.panel-text strong {
+    color: #293751;
+}
+
+/* SIDEBAR */
+
+.side-label {
+    font-size: 10px;
+    color: #8B97AB;
+    font-weight: 800;
+    letter-spacing: 0.11em;
+    margin: 12px 0;
+}
+
+.side-note {
+    background: #F0F1FF;
+    border: 1px solid #E0E1FF;
+    border-radius: 14px;
+    padding: 17px;
+    font-size: 12px;
+    line-height: 1.8;
+    color: #5656A4;
+    margin-top: 20px;
+}
+
+/* RESULTS PAGE */
+
+.report-banner {
+    background: linear-gradient(
+        110deg,
+        #FFFFFF,
+        #F0F1FF
+    );
+    border: 1px solid #DFE1FB;
+    border-radius: 22px;
+    padding: 34px;
+    margin: 17px 0 26px;
+}
+
+.report-banner h1 {
+    font-size: clamp(30px, 4vw, 44px);
+    font-weight: 750;
+    letter-spacing: -1.5px;
+    margin: 9px 0 12px;
+    color: #19243A;
+}
+
+.report-banner p {
+    color: #66758E;
+    font-size: 14px;
+    line-height: 1.8;
+    max-width: 720px;
+}
+
+.status {
     display: inline-block;
-    padding: 5px 10px;
-    border-radius: 7px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 13px;
+}
+
+.finding-card {
+    background: #FFFFFF;
+    border: 1px solid #E1E6EF;
+    border-radius: 15px;
+    padding: 22px;
+    margin-bottom: 13px;
+}
+
+.finding-title {
+    color: #19243A;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 11px;
+}
+
+.finding-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
     font-size: 11px;
     font-weight: 700;
     margin-bottom: 12px;
 }
 
-.evidence-body {
-    color: #334155;
+.finding-body {
+    color: #53627B;
     font-size: 13px;
-    line-height: 1.75;
+    line-height: 1.85;
     overflow-wrap: anywhere;
 }
 
-.evidence-meta {
-    color: #64748B;
+.finding-meta {
+    color: #8491A7;
     font-size: 12px;
-    line-height: 1.7;
+    line-height: 1.9;
     margin-top: 12px;
     overflow-wrap: anywhere;
 }
 
-/* Sidebar info */
-
-.sidebar-card {
-    background: #EAF1F8;
-    border: 1px solid #CBDDED;
-    border-left: 4px solid #0F766E;
-    border-radius: 10px;
-    padding: 14px;
-    margin-bottom: 12px;
-}
-
-.sidebar-card-title {
-    color: #172B4D;
-    font-size: 13px;
-    font-weight: 750;
-    margin-bottom: 6px;
-}
-
-.sidebar-card-body {
-    color: #334155;
-    font-size: 12px;
-    line-height: 1.7;
-}
-
-/* Export */
-
-.export-panel {
+.guide-item {
     background: #FFFFFF;
-    border: 1px solid #DFE5EC;
+    border: 1px solid #E1E6EF;
     border-radius: 14px;
-    padding: 18px;
-    margin-bottom: 16px;
+    padding: 19px;
+    margin-bottom: 13px;
 }
 
-.footer-note {
+.guide-item h3 {
+    color: #19243A;
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0 0 8px;
+}
+
+.guide-item p {
+    color: #68758D;
+    font-size: 13px;
+    line-height: 1.75;
+    margin: 0;
+}
+
+/* FOOTER */
+
+.footer {
+    border-top: 1px solid #E1E6EF;
+    margin-top: 48px;
+    padding-top: 22px;
     text-align: center;
-    color: #64748B;
+    color: #8B97AB;
     font-size: 12px;
-    margin-top: 38px;
     line-height: 1.8;
 }
 
-@media (max-width: 768px) {
-    .topbar {
-        flex-direction: column;
-        align-items: flex-start;
+/* MOBILE */
+
+@media(max-width:850px) {
+    .block-container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
     }
 
-    .hero {
+    .brand {
+        font-size: 15px;
+    }
+
+    .nav-caption {
+        font-size: 10px;
+    }
+
+    .panel {
+        padding: 17px;
+    }
+
+    .report-banner {
         padding: 23px;
     }
 
-    .block-container {
-        padding-left: 1rem;
-        padding-right: 1rem;
+    .finding-card {
+        padding: 17px;
+    }
+
+    .page-title {
+        font-size: 30px;
     }
 }
 </style>
-""",
+    """,
     unsafe_allow_html=True,
 )
 
 
-# ==================================================
-# HELPERS
-# ==================================================
+# ============================================================
+# 3. HTML AND DATA HELPERS
+# ============================================================
 
-def html_safe(value):
-    """
-    Mask recognized sensitive-number patterns
-    and escape HTML characters.
-    """
+def html(content):
+    cleaned = dedent(content).strip()
+
+    cleaned = " ".join(
+        line.strip()
+        for line in cleaned.splitlines()
+        if line.strip()
+    )
+
+    st.markdown(
+        cleaned,
+        unsafe_allow_html=True,
+    )
+
+
+def safe(value):
     if value is None:
-        return "Not available"
+        return ""
 
     return escape(
-        mask_sensitive_data(str(value))
-    ).replace("\n", "<br>")
-
-
-def get_finding_type(result):
-    kind = getattr(
-        result,
-        "finding_type",
-        FindingType.UNKNOWN,
-    )
-
-    if isinstance(kind, FindingType):
-        return kind.value
-
-    return str(kind)
-
-
-def safe_report_dict(report):
-    data = report.model_dump(mode="json")
-
-    def sanitize(value):
-        if isinstance(value, str):
-            return mask_sensitive_data(value)
-
-        if isinstance(value, dict):
-            return {
-                key: sanitize(item)
-                for key, item in value.items()
-            }
-
-        if isinstance(value, list):
-            return [
-                sanitize(item)
-                for item in value
-            ]
-
-        return value
-
-    return sanitize(data)
-
-
-def section(eyebrow, title):
-    st.markdown(
-        (
-            '<div class="section-eyebrow">'
-            + html_safe(eyebrow)
-            + '</div>'
-            '<div class="section-title">'
-            + html_safe(title)
-            + '</div>'
-        ),
-        unsafe_allow_html=True,
+        str(value),
+        quote=True,
     )
 
 
-def render_metric(label, value, caption, color):
-    st.markdown(
-        (
-            '<div class="metric-card">'
-            '<div class="metric-label">'
-            + html_safe(label)
-            + '</div>'
-            '<div class="metric-value" style="color:'
-            + color
-            + '">'
-            + html_safe(value)
-            + '</div>'
-            '<div class="metric-caption">'
-            + html_safe(caption)
-            + '</div>'
-            '</div>'
-        ),
-        unsafe_allow_html=True,
+def field(obj, name, default=None):
+    if isinstance(obj, dict):
+        return obj.get(name, default)
+
+    return getattr(
+        obj,
+        name,
+        default,
     )
 
 
-def render_evidence_card(result):
-    kind = get_finding_type(result)
+def enum_text(value):
+    return str(
+        getattr(value, "value", value)
+    )
 
-    styles = {
-        "risk_signal": {
-            "label": "Risk signal",
-            "bg": "#FFF7E8",
-            "fg": "#92400E",
-            "icon": "⚠️",
-        },
-        "contradiction": {
-            "label": "Contradiction",
-            "bg": "#FEECEC",
-            "fg": "#B91C1C",
-            "icon": "❌",
-        },
-        "supporting_evidence": {
-            "label": "Supporting check",
-            "bg": "#E8F6F2",
-            "fg": "#0F766E",
-            "icon": "✅",
-        },
-        "unknown": {
-            "label": "Unverified",
-            "bg": "#EFF3F7",
-            "fg": "#475569",
-            "icon": "🔎",
-        },
+
+def kind_of(check):
+    value = enum_text(
+        field(check, "finding_type", "unknown")
+    )
+
+    return (
+        value.lower()
+        .split(".")[-1]
+        .replace(" ", "_")
+        .replace("-", "_")
+    )
+
+
+def get_checks(report):
+    """
+    Your project's VerificationReport uses .checks.
+    """
+    for name in (
+        "checks",
+        "results",
+        "check_results",
+        "findings",
+    ):
+        value = field(report, name)
+
+        if isinstance(value, (list, tuple)):
+            return list(value)
+
+    return []
+
+
+def get_counts(checks):
+    counts = {
+        "risk_signal": 0,
+        "contradiction": 0,
+        "supporting_evidence": 0,
+        "unknown": 0,
     }
 
-    style = styles.get(
+    for check in checks:
+        kind = kind_of(check)
+
+        if kind not in counts:
+            kind = "unknown"
+
+        counts[kind] += 1
+
+    return counts
+
+
+def status_from_counts(counts):
+    if counts["contradiction"] > 0:
+        return (
+            "Contradictions require review",
+            "#FFF0F2",
+            "#C0394B",
+        )
+
+    if counts["risk_signal"] > 0:
+        return (
+            "Warning signs identified",
+            "#FFF5E5",
+            "#A86408",
+        )
+
+    return (
+        "Independent verification required",
+        "#F0F1FF",
+        "#5046E5",
+    )
+
+
+def report_json(report):
+    if hasattr(report, "model_dump_json"):
+        return report.model_dump_json(indent=2)
+
+    if hasattr(report, "model_dump"):
+        data = report.model_dump(mode="json")
+
+    elif hasattr(report, "dict"):
+        data = report.dict()
+
+    else:
+        data = report
+
+    return json.dumps(
+        data,
+        indent=2,
+        ensure_ascii=False,
+        default=str,
+    )
+
+
+# ============================================================
+# 4. UI COMPONENTS
+# ============================================================
+
+def page_heading(eyebrow, title, description):
+    html(
+        f"""
+        <div class="eyebrow">
+            {safe(eyebrow)}
+        </div>
+
+        <div class="page-title">
+            {safe(title)}
+        </div>
+
+        <div class="page-desc">
+            {safe(description)}
+        </div>
+        """
+    )
+
+
+def guide(title, description):
+    html(
+        f"""
+        <div class="guide-item">
+            <h3>{safe(title)}</h3>
+            <p>{safe(description)}</p>
+        </div>
+        """
+    )
+
+
+def finding_card(check):
+    kind = kind_of(check)
+
+    styles = {
+        "risk_signal": (
+            "Risk signal",
+            "#FFF5E5",
+            "#A86408",
+            "⚠",
+        ),
+        "contradiction": (
+            "Contradiction",
+            "#FFF0F2",
+            "#C0394B",
+            "✕",
+        ),
+        "supporting_evidence": (
+            "Supporting evidence",
+            "#E9F8F0",
+            "#087F5B",
+            "✓",
+        ),
+        "unknown": (
+            "Not verified",
+            "#F0F1FF",
+            "#5046E5",
+            "◇",
+        ),
+    }
+
+    label, bg, color, icon = styles.get(
         kind,
         styles["unknown"],
     )
 
-    check_name = result.check_name.replace(
-        "_", " "
-    ).title()
+    title = str(
+        field(check, "check_name", "Evidence check")
+    ).replace("_", " ").title()
 
-    claim_type = (
-        result.claim.claim_type
-        if result.claim
-        else "Not available"
+    finding = field(
+        check,
+        "finding",
+        "No finding available.",
     )
 
-    # HTML is kept on one physical line to prevent
-    # Markdown from displaying tags as code.
-    card_html = (
-        '<div class="evidence-card">'
-        '<div class="evidence-heading">'
-        + style["icon"] + " " + html_safe(check_name)
-        + '</div>'
-        '<span class="evidence-badge" style="background:'
-        + style["bg"]
-        + ';color:'
-        + style["fg"]
-        + '">'
-        + style["label"]
-        + '</span>'
-        '<div class="evidence-body"><strong>Finding:</strong> '
-        + html_safe(result.finding)
-        + '</div>'
-        '<div class="evidence-meta">'
-        '<strong>Verdict:</strong> '
-        + html_safe(result.verdict.value)
-        + '<br><strong>Evidence source:</strong> '
-        + html_safe(result.source)
-        + '<br><strong>Claim type:</strong> '
-        + html_safe(claim_type)
-        + '<br><strong>Confidence / limitations:</strong> '
-        + html_safe(result.confidence_note)
-        + '</div>'
-        '</div>'
+    source = field(
+        check,
+        "source",
+        "Not available",
     )
 
-    st.markdown(
-        card_html,
-        unsafe_allow_html=True,
+    verdict = enum_text(
+        field(check, "verdict", "Unknown")
+    )
+
+    confidence = field(
+        check,
+        "confidence_note",
+        "",
+    )
+
+    claim = field(
+        check,
+        "claim",
+    )
+
+    claim_type = enum_text(
+        field(
+            claim,
+            "claim_type",
+            "Not available",
+        )
+    )
+
+    html(
+        f"""
+        <div class="finding-card">
+            <div class="finding-title">
+                {safe(icon)}
+                {safe(title)}
+            </div>
+
+            <span
+                class="finding-badge"
+                style="
+                    background:{bg};
+                    color:{color};
+                "
+            >
+                {safe(label)}
+            </span>
+
+            <div class="finding-body">
+                <strong>Finding</strong>
+                <div>
+                    {safe(finding)}
+                </div>
+            </div>
+
+            <div class="finding-meta">
+                <strong>Verdict:</strong>
+                {safe(verdict)}
+                <br>
+
+                <strong>Source:</strong>
+                {safe(source)}
+                <br>
+
+                <strong>Claim:</strong>
+                {safe(claim_type)}
+                <br>
+
+                <strong>Limitations:</strong>
+                {safe(confidence)}
+            </div>
+        </div>
+        """
     )
 
 
-# ==================================================
-# SESSION STATE
-# ==================================================
+# ============================================================
+# 5. SESSION STATE
+# ============================================================
 
-if "verification_report" not in st.session_state:
-    st.session_state.verification_report = None
+if "page" not in st.session_state:
+    st.session_state.page = "overview"
 
-if "pdf_report_bytes" not in st.session_state:
-    st.session_state.pdf_report_bytes = None
+if "report" not in st.session_state:
+    st.session_state.report = None
 
-
-# ==================================================
-# SIDEBAR
-# ==================================================
-
-with st.sidebar:
-    st.title("🛡️ Trust Console")
-    st.caption("Offer Evidence Verifier")
-
-    st.divider()
-
-    st.markdown("### Workspace")
-
-    st.write("📄 Offer analysis")
-    st.write("🔎 Evidence checks")
-    st.write("🛡️ Risk signals")
-    st.write("📊 Evidence summary")
-    st.write("📥 Report export")
-
-    st.divider()
-
-    st.markdown(
-        (
-            '<div class="sidebar-card">'
-            '<div class="sidebar-card-title">'
-            'Evidence-first verification'
-            '</div>'
-            '<div class="sidebar-card-body">'
-            'A risk signal does not prove fraud. '
-            'A supporting check does not certify authenticity.'
-            '</div></div>'
-        ),
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        (
-            '<div class="sidebar-card">'
-            '<div class="sidebar-card-title">'
-            'Privacy-aware workflow'
-            '</div>'
-            '<div class="sidebar-card-body">'
-            'Common sensitive-number patterns are masked. '
-            'Other personal information may remain.'
-            '</div></div>'
-        ),
-        unsafe_allow_html=True,
-    )
-
-    if st.button(
-        "Clear previous report",
-        use_container_width=True,
-    ):
-        st.session_state.verification_report = None
-        st.session_state.pdf_report_bytes = None
-        st.rerun()
+if "pdf_bytes" not in st.session_state:
+    st.session_state.pdf_bytes = None
 
 
-# ==================================================
-# HEADER
-# ==================================================
+def navigate(page):
+    st.session_state.page = page
+    st.rerun()
 
-st.markdown(
-    (
-        '<div class="topbar">'
-        '<div>'
-        '<div class="brand-title">'
-        '🛡️ Offer Evidence Verifier'
-        '</div>'
-        '<div class="brand-subtitle">'
-        'Trust Intelligence Workspace'
-        '</div>'
-        '</div>'
-        '<div class="topbar-badge">'
-        'Evidence-first analysis'
-        '</div>'
-        '</div>'
-    ),
-    unsafe_allow_html=True,
+
+def reset():
+    st.session_state.report = None
+    st.session_state.pdf_bytes = None
+    st.session_state.page = "verification"
+    st.rerun()
+
+
+# ============================================================
+# 6. TOP NAVBAR
+# ============================================================
+
+html(
+    """
+    <div class="topbar">
+        <div class="brand">
+            <span class="brand-mark">✦</span>
+            Offer Evidence Verifier
+        </div>
+
+        <div class="nav-caption">
+            Trust through evidence
+        </div>
+    </div>
+    """
 )
 
 
-# ==================================================
-# HERO
-# ==================================================
+# ============================================================
+# 7. DEDICATED FULL-WIDTH RESULTS PAGE
+# ============================================================
 
-st.markdown(
-    (
-        '<div class="hero">'
-        '<div class="hero-eyebrow">'
-        'RECRUITMENT EVIDENCE INTELLIGENCE'
-        '</div>'
-        '<div class="hero-title">'
-        'Know what you can verify.'
-        '</div>'
-        '<div class="hero-description">'
-        'Analyze recruitment claims, identify caution '
-        'signals and review structured evidence. '
-        'Understand what is supported, what conflicts, '
-        'and what still needs independent verification.'
-        '</div>'
-        '</div>'
-    ),
-    unsafe_allow_html=True,
-)
+if st.session_state.page == "results":
 
+    report = st.session_state.report
 
-# ==================================================
-# WORKFLOW
-# ==================================================
+    if report is None:
+        navigate("verification")
 
-workflow_steps = [
-    "01 · Submit offer",
-    "02 · Configure checks",
-    "03 · Analyze evidence",
-    "04 · Review findings",
-    "05 · Export report",
-]
+    top_left, top_right = st.columns([4, 1])
 
-workflow_html = '<div class="workflow">'
+    with top_left:
+        st.caption(
+            "DASHBOARD / VERIFICATION / ANALYSIS RESULTS"
+        )
 
-for index, step in enumerate(workflow_steps):
-    active_class = (
-        "workflow-step active"
-        if index == 0
-        else "workflow-step"
+    with top_right:
+        if st.button(
+            "← Back to Dashboard",
+            use_container_width=True,
+        ):
+            navigate("overview")
+
+    checks = get_checks(report)
+
+    counts = get_counts(checks)
+
+    status_label, status_bg, status_color = (
+        status_from_counts(counts)
     )
 
-    workflow_html += (
-        '<div class="'
-        + active_class
-        + '">'
-        + html_safe(step)
-        + '</div>'
+    html(
+        f"""
+        <div class="report-banner">
+            <div class="eyebrow">
+                VERIFICATION REPORT
+            </div>
+
+            <h1>
+                Your offer analysis is ready.
+            </h1>
+
+            <p>
+                Explore evidence found in your
+                offer letter. Review suspicious
+                claims, contradictions and
+                unresolved checks before making
+                a decision.
+            </p>
+
+            <span
+                class="status"
+                style="
+                    background:{status_bg};
+                    color:{status_color};
+                "
+            >
+                {safe(status_label)}
+            </span>
+        </div>
+        """
     )
 
-workflow_html += '</div>'
-
-st.markdown(
-    workflow_html,
-    unsafe_allow_html=True,
-)
-
-
-# ==================================================
-# OFFER INPUT
-# ==================================================
-
-section(
-    "01 / Input",
-    "Submit an offer",
-)
-
-input_mode = st.radio(
-    "Input method",
-    ["Paste Text", "Upload PDF"],
-    horizontal=True,
-)
-
-offer_text = ""
-
-if input_mode == "Paste Text":
-    offer_text = st.text_area(
-        "Offer content",
-        height=230,
-        placeholder=(
-            "Company: Example Technologies\n"
-            "Role: Software Developer Intern\n"
-            "Recruiter: hr@example.com\n"
-            "No registration fee required."
-        ),
+    html(
+        '<div class="section-title">Evidence summary</div>'
     )
 
-else:
-    uploaded_file = st.file_uploader(
-        "Upload a text-based PDF",
-        type=["pdf"],
-        help=(
-            "Text-based PDFs only. "
-            "Scanned PDFs are not supported."
-        ),
+    m1, m2, m3, m4 = st.columns(4)
+
+    with m1:
+        st.metric(
+            "Risk signals",
+            counts["risk_signal"],
+        )
+
+    with m2:
+        st.metric(
+            "Contradictions",
+            counts["contradiction"],
+        )
+
+    with m3:
+        st.metric(
+            "Supporting evidence",
+            counts["supporting_evidence"],
+        )
+
+    with m4:
+        st.metric(
+            "Unverified checks",
+            counts["unknown"],
+        )
+
+    st.write("")
+
+    detail_col, action_col = st.columns(
+        [2.4, 1],
+        gap="large",
     )
 
-    if uploaded_file is not None:
+    with detail_col:
+
+        html(
+            '<div class="section-title">Detailed evidence</div>'
+        )
+
+        if not checks:
+            st.info(
+                "The verification engine returned "
+                "no individual checks."
+            )
+
+        groups = [
+            (
+                "⚠ Risk signals",
+                "risk_signal",
+            ),
+            (
+                "✕ Contradictions",
+                "contradiction",
+            ),
+            (
+                "✓ Supporting evidence",
+                "supporting_evidence",
+            ),
+            (
+                "◇ Could not verify",
+                "unknown",
+            ),
+        ]
+
+        for heading, group_type in groups:
+
+            items = []
+
+            for check in checks:
+
+                check_type = kind_of(check)
+
+                if check_type not in {
+                    "risk_signal",
+                    "contradiction",
+                    "supporting_evidence",
+                }:
+                    check_type = "unknown"
+
+                if check_type == group_type:
+                    items.append(check)
+
+            if not items:
+                continue
+
+            st.markdown(
+                f"### {heading}"
+            )
+
+            for item in items:
+                finding_card(item)
+
+    with action_col:
+
+        html(
+            '<div class="section-title">Recommended actions</div>'
+        )
+
+        guide(
+            "01 · Verify the employer",
+            (
+                "Contact the company through "
+                "independently confirmed official "
+                "communication channels."
+            ),
+        )
+
+        guide(
+            "02 · Avoid unexpected fees",
+            (
+                "Do not pay registration or "
+                "verification fees without "
+                "independent confirmation."
+            ),
+        )
+
+        guide(
+            "03 · Protect personal data",
+            (
+                "Avoid sharing identity or "
+                "banking details with an "
+                "unverified recruiter."
+            ),
+        )
+
+        guide(
+            "04 · Verify the recruiter",
+            (
+                "Confirm the recruiter's "
+                "identity through the "
+                "employer's official HR team."
+            ),
+        )
+
+        html(
+            '<div class="section-title">Download report</div>'
+        )
+
+        pdf_data = (
+            st.session_state.pdf_bytes
+        )
+
+        if pdf_data is not None:
+
+            st.download_button(
+                "↓ Download PDF",
+                data=pdf_data,
+                file_name="offer_evidence_report.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+
+        else:
+
+            st.caption(
+                "PDF export unavailable "
+                "for this analysis."
+            )
+
         try:
-            offer_text = extract_pdf_text(
-                uploaded_file.getvalue()
-            )
 
-            st.success(
-                "PDF text extracted successfully."
+            st.download_button(
+                "↓ Download JSON",
+                data=report_json(report),
+                file_name="offer_evidence_report.json",
+                mime="application/json",
+                use_container_width=True,
             )
-
-            with st.expander(
-                "Preview extracted text"
-            ):
-                st.text(
-                    mask_sensitive_data(offer_text)[:5000]
-                )
 
         except Exception as exc:
-            st.error(
-                f"Could not process PDF: {exc}"
+
+            st.warning(
+                f"JSON export unavailable: {exc}"
             )
 
+        st.write("")
 
-# ==================================================
-# VERIFICATION SETTINGS
-# ==================================================
-
-section(
-    "02 / Configuration",
-    "Verification settings",
-)
-
-left, right = st.columns(2)
-
-with left:
-    official_domain = st.text_input(
-        "Independently confirmed employer domain",
-        placeholder="example.com",
-        help=(
-            "Optional. Confirm the official domain "
-            "outside the submitted offer."
-        ),
-    )
-
-with right:
-    enable_domain_intelligence = st.checkbox(
-        "Enable RDAP and DNS intelligence",
-        value=False,
-        help=(
-            "Optional network checks. "
-            "Domain age does not prove authenticity."
-        ),
-    )
-
-
-# ==================================================
-# ANALYSIS
-# ==================================================
-
-section(
-    "03 / Analysis",
-    "Run evidence verification",
-)
-
-st.caption(
-    "The system uses rule-based checks and optional "
-    "domain intelligence. It does not make a final "
-    "fraud determination."
-)
-
-if st.button(
-    "Analyze Offer",
-    type="primary",
-    use_container_width=True,
-):
-    st.session_state.verification_report = None
-    st.session_state.pdf_report_bytes = None
-
-    if not offer_text.strip():
-        st.warning(
-            "Please provide offer text or a readable PDF."
-        )
-
-    else:
-        with st.spinner(
-            "Extracting claims and evaluating evidence..."
-        ):
-            try:
-                masked_text = mask_sensitive_data(
-                    offer_text
-                )
-
-                report = verify_offer(
-                    masked_text,
-                    official_domain=(
-                        official_domain.strip() or None
-                    ),
-                    enable_domain_intelligence=(
-                        enable_domain_intelligence
-                    ),
-                )
-
-                pdf_bytes = generate_evidence_pdf(
-                    report
-                )
-
-                st.session_state.verification_report = report
-                st.session_state.pdf_report_bytes = pdf_bytes
-
-            except Exception as exc:
-                st.error(
-                    f"Analysis failed: {exc}"
-                )
-                st.stop()
-
-
-# ==================================================
-# RESULTS
-# ==================================================
-
-report = st.session_state.verification_report
-
-if report is not None:
-    st.divider()
-
-    section(
-        "04 / Results",
-        "Evidence overview",
-    )
-
-    st.success(
-        "Analysis completed. Review the evidence below."
-    )
-
-    st.caption(
-        "Report ID: "
-        + mask_sensitive_data(str(report.report_id))
-    )
-
-    groups = {
-        "risk_signal": [],
-        "contradiction": [],
-        "supporting_evidence": [],
-        "unknown": [],
-    }
-
-    for result in report.checks:
-        kind = get_finding_type(result)
-        groups.setdefault(kind, []).append(result)
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        render_metric(
-            "Risk signals",
-            len(groups["risk_signal"]),
-            "Caution indicators",
-            "#B45309",
-        )
-
-    with col2:
-        render_metric(
-            "Contradictions",
-            len(groups["contradiction"]),
-            "Conflicting evidence",
-            "#B91C1C",
-        )
-
-    with col3:
-        render_metric(
-            "Supporting checks",
-            len(groups["supporting_evidence"]),
-            "Limited supporting evidence",
-            "#0F766E",
-        )
-
-    with col4:
-        render_metric(
-            "Unverified",
-            len(groups["unknown"]),
-            "Requires further checks",
-            "#475569",
-        )
-
-    st.caption(
-        "These counts represent findings, not "
-        "a fraud probability or authenticity score."
-    )
-
-    section(
-        "05 / Findings",
-        "Evidence breakdown",
-    )
-
-    categories = [
-        (
-            "⚠️ Risk signals",
-            groups["risk_signal"],
-        ),
-        (
-            "❌ Contradictions",
-            groups["contradiction"],
-        ),
-        (
-            "✅ Supporting checks",
-            groups["supporting_evidence"],
-        ),
-        (
-            "🔎 Unknown / unverified",
-            groups["unknown"],
-        ),
-    ]
-
-    for heading, findings in categories:
-        st.subheader(heading)
-
-        if not findings:
-            st.caption(
-                "No findings in this category."
-            )
-        else:
-            for finding in findings:
-                render_evidence_card(finding)
-
-    section(
-        "06 / Guidance",
-        "Recommended next steps",
-    )
-
-    if report.safe_steps:
-        for index, step in enumerate(
-            report.safe_steps,
-            start=1,
-        ):
-            st.write(
-                f"**{index}.** "
-                + mask_sensitive_data(str(step))
-            )
-    else:
-        st.info(
-            "No specific recommendations were generated."
-        )
-
-    st.info(
-        mask_sensitive_data(str(report.disclaimer))
-    )
-
-    section(
-        "07 / Export",
-        "Download evidence report",
-    )
-
-    st.markdown(
-        (
-            '<div class="export-panel">'
-            '<strong>Report ready</strong><br>'
-            'Download the evidence summary, individual '
-            'findings, sources, limitations and '
-            'recommended actions.'
-            '</div>'
-        ),
-        unsafe_allow_html=True,
-    )
-
-    pdf_col, json_col = st.columns(2)
-
-    with pdf_col:
-        st.download_button(
-            "📄 Download PDF Report",
-            data=st.session_state.pdf_report_bytes,
-            file_name="offer_evidence_report.pdf",
-            mime="application/pdf",
+        if st.button(
+            "✦ Analyze Another Offer",
+            type="primary",
             use_container_width=True,
+        ):
+            reset()
+
+        st.caption(
+            "Risk signals are not proof of fraud. "
+            "Supporting evidence does not "
+            "guarantee authenticity."
         )
 
-    with json_col:
-        export_data = safe_report_dict(report)
 
-        st.download_button(
-            "📋 Download JSON Report",
-            data=json.dumps(
-                export_data,
-                indent=2,
-                ensure_ascii=False,
+# ============================================================
+# 8. THREE-COLUMN DASHBOARD
+# ============================================================
+
+else:
+
+    left, center, right = st.columns(
+        [1.15, 3.2, 1.3],
+        gap="medium",
+    )
+
+    # --------------------------------------------------------
+    # LEFT NAVIGATION
+    # --------------------------------------------------------
+
+    with left:
+
+        html(
+            """
+            <div class="panel">
+                <div class="side-label">
+                    NAVIGATION
+                </div>
+
+                <div class="panel-title">
+                    Your dashboard
+                </div>
+
+                <div class="panel-text">
+                    Access verification tools,
+                    safety resources and
+                    your latest report.
+                </div>
+            </div>
+            """
+        )
+
+        menu = [
+            (
+                "overview",
+                "▦ Overview",
             ),
-            file_name="offer_evidence_report.json",
-            mime="application/json",
-            use_container_width=True,
+            (
+                "verification",
+                "⌕ New Verification",
+            ),
+            (
+                "risk",
+                "⚠ Risk Indicators",
+            ),
+            (
+                "guide",
+                "☷ Safety Guide",
+            ),
+        ]
+
+        for page_id, label in menu:
+
+            active = (
+                st.session_state.page
+                == page_id
+            )
+
+            if st.button(
+                ("● " if active else "") + label,
+                key=f"menu_{page_id}",
+                type=(
+                    "primary"
+                    if active
+                    else "secondary"
+                ),
+                use_container_width=True,
+            ):
+                navigate(page_id)
+
+        if st.session_state.report is not None:
+
+            if st.button(
+                "▤ Analysis Results",
+                use_container_width=True,
+            ):
+                navigate("results")
+
+        html(
+            """
+            <div class="side-note">
+                <strong>
+                    Privacy-aware verification
+                </strong>
+                <br>
+                Common sensitive data patterns
+                are masked before analysis.
+                Review documents before uploading.
+            </div>
+            """
         )
 
-    st.caption(
-        "Review exported reports before sharing. "
-        "Masking does not remove every form of "
-        "personal information."
-    )
+    # --------------------------------------------------------
+    # RIGHT INFORMATION PANEL
+    # --------------------------------------------------------
+
+    with right:
+
+        html(
+            """
+            <div class="panel">
+                <div class="panel-title">
+                    ◇ What we check
+                </div>
+
+                <div class="panel-text">
+                    ✓ Recruitment fee requests
+                    <br>
+                    ✓ Suspicious email domains
+                    <br>
+                    ✓ Urgency tactics
+                    <br>
+                    ✓ Unusual communication channels
+                    <br>
+                    ✓ Offer inconsistencies
+                </div>
+            </div>
+            """
+        )
+
+        html(
+            """
+            <div class="panel">
+                <div class="panel-title">
+                    💡 Security tip
+                </div>
+
+                <div class="panel-text">
+                    Never pay a recruitment fee
+                    based only on an offer letter.
+                    Verify the request using
+                    independently confirmed
+                    employer contact details.
+                </div>
+            </div>
+            """
+        )
+
+        if st.session_state.report is not None:
+
+            latest = get_checks(
+                st.session_state.report
+            )
+
+            latest_counts = get_counts(
+                latest
+            )
+
+            html(
+                f"""
+                <div class="panel">
+                    <div class="panel-title">
+                        ▤ Latest analysis
+                    </div>
+
+                    <div class="panel-text">
+                        <strong>
+                            {len(latest)}
+                        </strong>
+                        evidence checks
+                        <br>
+
+                        <strong>
+                            {latest_counts["risk_signal"]}
+                        </strong>
+                        risk signals
+                        <br>
+
+                        <strong>
+                            {latest_counts["contradiction"]}
+                        </strong>
+                        contradictions
+                    </div>
+                </div>
+                """
+            )
+
+            if st.button(
+                "View full report →",
+                use_container_width=True,
+                key="right_report",
+            ):
+                navigate("results")
+
+        else:
+
+            html(
+                """
+                <div class="panel">
+                    <div class="panel-title">
+                        ▤ Your report
+                    </div>
+
+                    <div class="panel-text">
+                        Analyze an offer to see
+                        evidence findings and
+                        downloadable reports.
+                    </div>
+                </div>
+                """
+            )
+
+        html(
+            """
+            <div class="panel">
+                <div class="panel-title">
+                    Important reminder
+                </div>
+
+                <div class="panel-text">
+                    No automated check can
+                    independently guarantee
+                    that a job offer is genuine.
+                </div>
+            </div>
+            """
+        )
+
+    # --------------------------------------------------------
+    # CENTER CONTENT
+    # --------------------------------------------------------
+
+    with center:
+
+        page = st.session_state.page
+
+        # ====================================================
+        # OVERVIEW PAGE
+        # ====================================================
+
+        if page == "overview":
+
+            page_heading(
+                "RECRUITMENT TRUST INTELLIGENCE",
+                "Verify opportunities with confidence.",
+                (
+                    "Analyze job and internship offers, "
+                    "identify suspicious claims and review "
+                    "clear, evidence-based findings before "
+                    "making your next career decision."
+                ),
+            )
+
+            html(
+                """
+                <div class="panel">
+                    <div class="eyebrow">
+                        OFFER VERIFICATION
+                    </div>
+
+                    <div class="panel-title">
+                        Have an offer letter?
+                        Let's verify it.
+                    </div>
+
+                    <div class="panel-text">
+                        Upload a PDF or paste your
+                        offer letter to check for
+                        recruitment fees, suspicious
+                        communication, urgency tactics
+                        and inconsistencies.
+                    </div>
+                </div>
+                """
+            )
+
+            if st.button(
+                "✦ Start New Verification",
+                type="primary",
+                use_container_width=True,
+                key="overview_start",
+            ):
+                navigate("verification")
+
+            html(
+                """
+                <div class="section-title">
+                    How it works
+                </div>
+                """
+            )
+
+            html(
+                """
+                <div class="panel">
+                    <div class="panel-text">
+
+                        <strong>
+                            01 — Submit your offer
+                        </strong>
+
+                        <p>
+                            Upload a PDF or paste
+                            the text of your job
+                            or internship offer.
+                        </p>
+
+                        <hr style="
+                            border:0;
+                            border-top:1px solid #E1E6EF;
+                        ">
+
+                        <strong>
+                            02 — Analyze evidence
+                        </strong>
+
+                        <p>
+                            The verification engine
+                            checks available claims
+                            and warning signs.
+                        </p>
+
+                        <hr style="
+                            border:0;
+                            border-top:1px solid #E1E6EF;
+                        ">
+
+                        <strong>
+                            03 — Review your report
+                        </strong>
+
+                        <p>
+                            Examine findings,
+                            limitations and
+                            recommended verification
+                            steps.
+                        </p>
+
+                    </div>
+                </div>
+                """
+            )
+
+            if st.session_state.report is not None:
+
+                if st.button(
+                    "View Latest Analysis →",
+                    use_container_width=True,
+                    key="overview_latest",
+                ):
+                    navigate("results")
+
+        # ====================================================
+        # NEW VERIFICATION PAGE
+        # ====================================================
+
+        elif page == "verification":
+
+            page_heading(
+                "NEW VERIFICATION",
+                "Verify a job or internship offer.",
+                (
+                    "Upload a text-based PDF or paste "
+                    "the complete offer letter. "
+                    "Your analysis will open on "
+                    "a dedicated results page."
+                ),
+            )
+
+            html(
+                """
+                <div class="panel">
+                    <div class="panel-title">
+                        Start an investigation
+                    </div>
+
+                    <div class="panel-text">
+                        Choose your input method.
+                        The report will open
+                        automatically after analysis.
+                    </div>
+                </div>
+                """
+            )
+
+            mode = st.radio(
+                "Input method",
+                [
+                    "Upload PDF",
+                    "Paste Text",
+                ],
+                horizontal=True,
+            )
+
+            offer_text = ""
+
+            if mode == "Upload PDF":
+
+                uploaded = st.file_uploader(
+                    "Upload offer letter",
+                    type=["pdf"],
+                    help=(
+                        "Text-based PDFs supported. "
+                        "Scanned PDFs need OCR."
+                    ),
+                )
+
+                if uploaded is not None:
+
+                    try:
+
+                        offer_text = extract_pdf_text(
+                            uploaded.getvalue()
+                        )
+
+                        if offer_text.strip():
+
+                            st.success(
+                                "PDF text extracted successfully."
+                            )
+
+                            with st.expander(
+                                "Preview extracted text"
+                            ):
+
+                                st.text(
+                                    mask_sensitive_data(
+                                        offer_text
+                                    )[:5000]
+                                )
+
+                        else:
+
+                            st.warning(
+                                "No readable text found. "
+                                "Try Paste Text instead."
+                            )
+
+                    except Exception as exc:
+
+                        st.error(
+                            f"PDF extraction failed: {exc}"
+                        )
+
+            else:
+
+                offer_text = st.text_area(
+                    "Offer letter content",
+                    height=300,
+                    placeholder=(
+                        "Paste your complete offer letter here...\n\n"
+                        "Company: Example Technologies\n"
+                        "Position: Software Development Intern\n"
+                        "Recruiter: hr@example.com"
+                    ),
+                    key="offer_input",
+                )
+
+            with st.expander(
+                "Advanced verification options"
+            ):
+
+                official_domain = st.text_input(
+                    "Independently confirmed employer domain",
+                    placeholder="example.com",
+                )
+
+                domain_intelligence = st.checkbox(
+                    "Enable DNS and RDAP intelligence",
+                    value=False,
+                )
+
+            st.write("")
+
+            if st.button(
+                "✦ Analyze Offer Letter",
+                type="primary",
+                use_container_width=True,
+            ):
+
+                if not offer_text.strip():
+
+                    st.warning(
+                        "Please provide readable offer text."
+                    )
+
+                else:
+
+                    with st.spinner(
+                        "Analyzing offer evidence..."
+                    ):
+
+                        try:
+
+                            masked = mask_sensitive_data(
+                                offer_text
+                            )
+
+                            report = verify_offer(
+                                masked,
+                                official_domain=(
+                                    official_domain.strip()
+                                    or None
+                                ),
+                                enable_domain_intelligence=(
+                                    domain_intelligence
+                                ),
+                            )
+
+                            st.session_state.report = report
+
+                            try:
+
+                                st.session_state.pdf_bytes = (
+                                    generate_evidence_pdf(
+                                        report
+                                    )
+                                )
+
+                            except Exception:
+
+                                st.session_state.pdf_bytes = (
+                                    None
+                                )
+
+                            navigate("results")
+
+                        except Exception as exc:
+
+                            st.error(
+                                f"Analysis failed: {exc}"
+                            )
+
+            st.caption(
+                "The tool identifies warning signs "
+                "and evidence. It does not certify "
+                "authenticity."
+            )
+
+        # ====================================================
+        # RISK INDICATORS PAGE
+        # ====================================================
+
+        elif page == "risk":
+
+            page_heading(
+                "RECRUITMENT RISK AWARENESS",
+                "Recognize warning signs.",
+                (
+                    "Learn about common suspicious "
+                    "recruitment patterns."
+                ),
+            )
+
+            risks = [
+                (
+                    "Upfront recruitment fees",
+                    (
+                        "Unexpected registration, "
+                        "verification or training "
+                        "payments requested to "
+                        "secure employment."
+                    ),
+                ),
+                (
+                    "Artificial urgency",
+                    (
+                        "Pressure to make a payment "
+                        "or submit documents within "
+                        "an unusually short deadline."
+                    ),
+                ),
+                (
+                    "Unverified email domains",
+                    (
+                        "Recruiter addresses that "
+                        "cannot be connected to "
+                        "independently confirmed "
+                        "employer information."
+                    ),
+                ),
+                (
+                    "WhatsApp-only recruitment",
+                    (
+                        "Recruitment managed entirely "
+                        "through informal messaging "
+                        "without independent employer "
+                        "confirmation."
+                    ),
+                ),
+                (
+                    "Guaranteed selection claims",
+                    (
+                        "Unusual promises of selection, "
+                        "salary or placement without "
+                        "a credible hiring process."
+                    ),
+                ),
+                (
+                    "Sensitive information requests",
+                    (
+                        "Requests for identity or "
+                        "banking details before "
+                        "verifying the recipient."
+                    ),
+                ),
+            ]
+
+            for title, description in risks:
+                guide(title, description)
+
+            st.info(
+                "One warning sign alone does not "
+                "establish fraud. Independently "
+                "verify the offer."
+            )
+
+            if st.button(
+                "Verify an Offer →",
+                type="primary",
+                use_container_width=True,
+            ):
+                navigate("verification")
+
+        # ====================================================
+        # SAFETY GUIDE PAGE
+        # ====================================================
+
+        elif page == "guide":
+
+            page_heading(
+                "CAREER SAFETY GUIDE",
+                "Verify before you trust.",
+                (
+                    "Practical steps for checking "
+                    "unfamiliar job and internship "
+                    "opportunities."
+                ),
+            )
+
+            steps = [
+                (
+                    "01 · Find the official employer website",
+                    (
+                        "Locate the company independently "
+                        "rather than following only "
+                        "the links in the offer."
+                    ),
+                ),
+                (
+                    "02 · Contact the official HR team",
+                    (
+                        "Use published official contact "
+                        "details to confirm whether "
+                        "the offer was issued."
+                    ),
+                ),
+                (
+                    "03 · Verify the recruiter",
+                    (
+                        "Confirm the recruiter's identity "
+                        "and role through the employer."
+                    ),
+                ),
+                (
+                    "04 · Avoid unexpected payments",
+                    (
+                        "Treat registration and verification "
+                        "fee requests as warning signs."
+                    ),
+                ),
+                (
+                    "05 · Protect your documents",
+                    (
+                        "Do not share identity or financial "
+                        "details until the recipient "
+                        "is verified."
+                    ),
+                ),
+                (
+                    "06 · Preserve suspicious evidence",
+                    (
+                        "Keep relevant messages and offer "
+                        "documents if you suspect "
+                        "recruitment fraud."
+                    ),
+                ),
+            ]
+
+            for title, description in steps:
+                guide(title, description)
+
+            if st.button(
+                "Start Verification →",
+                type="primary",
+                use_container_width=True,
+            ):
+                navigate("verification")
 
 
-# ==================================================
-# FOOTER
-# ==================================================
+# ============================================================
+# 9. FOOTER
+# ============================================================
 
-st.markdown(
-    (
-        '<div class="footer-note">'
-        'Offer Evidence Verifier · Trust Intelligence Workspace'
-        '<br>'
-        'Evidence-based decision support. '
-        'No automated finding is a final determination '
-        'of authenticity or fraud.'
-        '</div>'
-    ),
-    unsafe_allow_html=True,
+html(
+    """
+    <div class="footer">
+        © 2026 Offer Evidence Verifier
+        <br>
+        Evidence-first recruitment verification
+        · Transparent findings · Safer decisions
+    </div>
+    """
 )
-
-
-
-
-
-
-
-
-
-
-
