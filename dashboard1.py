@@ -1,5 +1,6 @@
 
 import json
+from html import escape
 
 import streamlit as st
 
@@ -10,171 +11,416 @@ from core.privacy import mask_sensitive_data
 from core.schemas import FindingType
 
 
-# ==========================================
+# ==================================================
 # PAGE CONFIGURATION
-# ==========================================
+# ==================================================
 
 st.set_page_config(
-    page_title="Offer Evidence Verifier",
+    page_title="Offer Evidence Verifier | Trust Console",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 
-# ==========================================
+# ==================================================
 # DESIGN SYSTEM
-# ==========================================
+# ==================================================
 
 st.markdown(
     """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+<style>
+:root {
+    --background: #F8F7F4;
+    --surface: #FFFFFF;
+    --navy: #172B4D;
+    --teal: #0F766E;
+    --text: #334155;
+    --muted: #64748B;
+    --border: #DFE5EC;
+}
 
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-    }
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"] {
+    background: var(--background);
+    color: var(--text);
+}
 
-    .stApp {
-        background: #080f1d;
-        color: #e5e7eb;
-    }
+.block-container {
+    max-width: 1280px;
+    padding-top: 1.5rem;
+    padding-bottom: 3rem;
+}
 
-    .block-container {
-        max-width: 1320px;
-        padding-top: 2rem;
-        padding-bottom: 4rem;
-    }
+.stApp h1,
+.stApp h2,
+.stApp h3 {
+    color: var(--navy);
+    letter-spacing: -0.5px;
+}
 
-    h1, h2, h3 {
-        color: #f8fafc !important;
-    }
+.stApp p,
+.stApp label,
+.stApp li {
+    color: var(--text);
+}
 
-    h1 {
-        font-weight: 800 !important;
-        letter-spacing: -1px;
-    }
+/* Sidebar */
 
-    div[data-testid="stMetric"] {
-        background: #121e31;
-        border: 1px solid #26364f;
-        border-radius: 14px;
-        padding: 18px;
-        min-height: 115px;
-    }
+[data-testid="stSidebar"] {
+    background: #FFFFFF;
+    border-right: 1px solid var(--border);
+}
 
-    div[data-testid="stMetricLabel"] {
-        color: #94a3b8;
-    }
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    color: var(--navy);
+}
 
-    div[data-testid="stMetricValue"] {
-        color: #f8fafc;
-    }
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] li {
+    color: var(--text);
+}
 
-    div[data-testid="stExpander"] {
-        background: #111c2e;
-        border: 1px solid #26364f;
-        border-radius: 12px;
-        margin-bottom: 10px;
+/* Inputs */
+
+.stTextArea textarea,
+.stTextInput input {
+    background: #FFFFFF !important;
+    color: #172B4D !important;
+    -webkit-text-fill-color: #172B4D !important;
+    border: 1px solid #A9B8C9 !important;
+    border-radius: 10px !important;
+    caret-color: #0F766E !important;
+}
+
+.stTextArea textarea::placeholder,
+.stTextInput input::placeholder {
+    color: #64748B !important;
+    -webkit-text-fill-color: #64748B !important;
+    opacity: 1 !important;
+}
+
+.stTextArea textarea:focus,
+.stTextInput input:focus {
+    border-color: #0F766E !important;
+}
+
+/* Radio / Checkbox */
+
+[data-testid="stRadio"] label p,
+[data-testid="stCheckbox"] label p {
+    color: #172B4D !important;
+}
+
+/* Buttons */
+
+div.stButton > button[kind="primary"] {
+    background: #0F766E !important;
+    border: 1px solid #0F766E !important;
+    color: #FFFFFF !important;
+    border-radius: 10px !important;
+    min-height: 48px;
+    font-weight: 700;
+}
+
+div.stButton > button[kind="primary"] *,
+div.stButton > button[kind="primary"] p {
+    color: #FFFFFF !important;
+}
+
+div.stButton > button[kind="primary"]:hover {
+    background: #115E59 !important;
+    border-color: #115E59 !important;
+}
+
+div.stButton > button[kind="secondary"],
+div.stDownloadButton > button {
+    background: #FFFFFF !important;
+    color: #172B4D !important;
+    border: 1px solid #C5D0DC !important;
+    border-radius: 10px !important;
+    min-height: 44px;
+}
+
+div.stButton > button[kind="secondary"] *,
+div.stDownloadButton > button * {
+    color: #172B4D !important;
+}
+
+div.stDownloadButton > button:hover,
+div.stButton > button[kind="secondary"]:hover {
+    background: #EFF8F6 !important;
+    border-color: #0F766E !important;
+}
+
+/* Header */
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.brand-title {
+    color: #172B4D;
+    font-size: 25px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+}
+
+.brand-subtitle {
+    color: #64748B;
+    font-size: 13px;
+    margin-top: 3px;
+}
+
+.topbar-badge {
+    color: #0F766E;
+    background: #E8F6F2;
+    border: 1px solid #BCE6D9;
+    padding: 8px 12px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* Hero */
+
+.hero {
+    background: linear-gradient(
+        115deg,
+        #172B4D 0%,
+        #234765 65%,
+        #176C74 100%
+    );
+    padding: 30px 34px;
+    border-radius: 18px;
+    margin-bottom: 24px;
+    box-shadow: 0 8px 24px rgba(23,43,77,0.10);
+}
+
+.hero-eyebrow {
+    color: #99F6E4;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+}
+
+.hero-title {
+    color: #FFFFFF;
+    font-size: clamp(26px, 3.4vw, 35px);
+    font-weight: 800;
+    line-height: 1.25;
+    margin-bottom: 10px;
+}
+
+.hero-description {
+    color: #E2E8F0;
+    font-size: 14px;
+    line-height: 1.75;
+    max-width: 760px;
+}
+
+/* Sections */
+
+.section-eyebrow {
+    color: #0F766E;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    margin: 22px 0 7px;
+}
+
+.section-title {
+    color: #172B4D;
+    font-size: 23px;
+    font-weight: 750;
+    margin-bottom: 14px;
+}
+
+/* Workflow */
+
+.workflow {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.workflow-step {
+    background: #FFFFFF;
+    border: 1px solid #DFE5EC;
+    border-radius: 10px;
+    padding: 10px 13px;
+    color: #52647B;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.workflow-step.active {
+    background: #E8F6F2;
+    border-color: #9AD6C6;
+    color: #0F766E;
+}
+
+/* Metric cards */
+
+.metric-card {
+    background: #FFFFFF;
+    border: 1px solid #DFE5EC;
+    border-radius: 15px;
+    padding: 18px;
+    min-height: 132px;
+    box-shadow: 0 3px 10px rgba(23,43,77,0.03);
+}
+
+.metric-label {
+    color: #52647B;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.metric-value {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.metric-caption {
+    color: #64748B;
+    font-size: 11px;
+    margin-top: 9px;
+}
+
+/* Evidence cards */
+
+.evidence-card {
+    background: #FFFFFF;
+    border: 1px solid #DFE5EC;
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 14px;
+    box-shadow: 0 3px 10px rgba(23,43,77,0.03);
+}
+
+.evidence-heading {
+    color: #172B4D;
+    font-size: 16px;
+    font-weight: 750;
+    margin-bottom: 10px;
+}
+
+.evidence-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.evidence-body {
+    color: #334155;
+    font-size: 13px;
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+}
+
+.evidence-meta {
+    color: #64748B;
+    font-size: 12px;
+    line-height: 1.7;
+    margin-top: 12px;
+    overflow-wrap: anywhere;
+}
+
+/* Sidebar info */
+
+.sidebar-card {
+    background: #EAF1F8;
+    border: 1px solid #CBDDED;
+    border-left: 4px solid #0F766E;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 12px;
+}
+
+.sidebar-card-title {
+    color: #172B4D;
+    font-size: 13px;
+    font-weight: 750;
+    margin-bottom: 6px;
+}
+
+.sidebar-card-body {
+    color: #334155;
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+/* Export */
+
+.export-panel {
+    background: #FFFFFF;
+    border: 1px solid #DFE5EC;
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+}
+
+.footer-note {
+    text-align: center;
+    color: #64748B;
+    font-size: 12px;
+    margin-top: 38px;
+    line-height: 1.8;
+}
+
+@media (max-width: 768px) {
+    .topbar {
+        flex-direction: column;
+        align-items: flex-start;
     }
 
     .hero {
-        background: linear-gradient(
-            120deg,
-            #102344 0%,
-            #0d1a30 65%,
-            #101c31 100%
-        );
-        border: 1px solid #28436b;
-        border-radius: 20px;
-        padding: 30px;
-        margin-bottom: 25px;
+        padding: 23px;
     }
 
-    .hero-title {
-        font-size: 34px;
-        font-weight: 800;
-        color: #f8fafc;
-        letter-spacing: -1px;
-        margin-bottom: 8px;
+    .block-container {
+        padding-left: 1rem;
+        padding-right: 1rem;
     }
-
-    .hero-subtitle {
-        color: #a7b8d0;
-        font-size: 15px;
-        line-height: 1.7;
-    }
-
-    .eyebrow {
-        color: #60a5fa;
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 1.6px;
-        text-transform: uppercase;
-        margin-bottom: 12px;
-    }
-
-    .info-panel {
-        background: #111c2e;
-        border: 1px solid #26364f;
-        border-radius: 12px;
-        padding: 18px;
-        margin-bottom: 18px;
-    }
-
-    .info-title {
-        font-size: 14px;
-        font-weight: 700;
-        color: #e2e8f0;
-        margin-bottom: 8px;
-    }
-
-    .info-text {
-        font-size: 13px;
-        color: #94a3b8;
-        line-height: 1.7;
-    }
-
-    .section-label {
-        color: #60a5fa;
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        margin-top: 12px;
-    }
-
-    .footer-note {
-        color: #64748b;
-        font-size: 12px;
-        text-align: center;
-        margin-top: 35px;
-    }
-
-    div.stButton > button[kind="primary"] {
-        background: #2563eb;
-        border-radius: 10px;
-        border: none;
-        font-weight: 700;
-        min-height: 48px;
-    }
-
-    div.stButton > button[kind="primary"]:hover {
-        background: #1d4ed8;
-    }
-
-    div[data-testid="stFileUploader"] {
-        border-radius: 12px;
-    }
-    </style>
-    """,
+}
+</style>
+""",
     unsafe_allow_html=True,
 )
 
 
-# ==========================================
-# HELPER FUNCTIONS
-# ==========================================
+# ==================================================
+# HELPERS
+# ==================================================
+
+def html_safe(value):
+    """
+    Mask recognized sensitive-number patterns
+    and escape HTML characters.
+    """
+    if value is None:
+        return "Not available"
+
+    return escape(
+        mask_sensitive_data(str(value))
+    ).replace("\n", "<br>")
+
 
 def get_finding_type(result):
     kind = getattr(
@@ -213,55 +459,125 @@ def safe_report_dict(report):
     return sanitize(data)
 
 
-def show_evidence(result):
+def section(eyebrow, title):
+    st.markdown(
+        (
+            '<div class="section-eyebrow">'
+            + html_safe(eyebrow)
+            + '</div>'
+            '<div class="section-title">'
+            + html_safe(title)
+            + '</div>'
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def render_metric(label, value, caption, color):
+    st.markdown(
+        (
+            '<div class="metric-card">'
+            '<div class="metric-label">'
+            + html_safe(label)
+            + '</div>'
+            '<div class="metric-value" style="color:'
+            + color
+            + '">'
+            + html_safe(value)
+            + '</div>'
+            '<div class="metric-caption">'
+            + html_safe(caption)
+            + '</div>'
+            '</div>'
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def render_evidence_card(result):
     kind = get_finding_type(result)
 
-    icons = {
-        "risk_signal": "⚠️",
-        "contradiction": "❌",
-        "supporting_evidence": "✅",
-        "unknown": "🔎",
+    styles = {
+        "risk_signal": {
+            "label": "Risk signal",
+            "bg": "#FFF7E8",
+            "fg": "#92400E",
+            "icon": "⚠️",
+        },
+        "contradiction": {
+            "label": "Contradiction",
+            "bg": "#FEECEC",
+            "fg": "#B91C1C",
+            "icon": "❌",
+        },
+        "supporting_evidence": {
+            "label": "Supporting check",
+            "bg": "#E8F6F2",
+            "fg": "#0F766E",
+            "icon": "✅",
+        },
+        "unknown": {
+            "label": "Unverified",
+            "bg": "#EFF3F7",
+            "fg": "#475569",
+            "icon": "🔎",
+        },
     }
 
-    label = result.check_name.replace(
+    style = styles.get(
+        kind,
+        styles["unknown"],
+    )
+
+    check_name = result.check_name.replace(
         "_", " "
     ).title()
 
-    with st.expander(
-        f"{icons.get(kind, '🔎')} {label}"
-    ):
-        st.markdown("**Finding**")
-        st.write(result.finding)
+    claim_type = (
+        result.claim.claim_type
+        if result.claim
+        else "Not available"
+    )
 
-        col1, col2 = st.columns(2)
+    # HTML is kept on one physical line to prevent
+    # Markdown from displaying tags as code.
+    card_html = (
+        '<div class="evidence-card">'
+        '<div class="evidence-heading">'
+        + style["icon"] + " " + html_safe(check_name)
+        + '</div>'
+        '<span class="evidence-badge" style="background:'
+        + style["bg"]
+        + ';color:'
+        + style["fg"]
+        + '">'
+        + style["label"]
+        + '</span>'
+        '<div class="evidence-body"><strong>Finding:</strong> '
+        + html_safe(result.finding)
+        + '</div>'
+        '<div class="evidence-meta">'
+        '<strong>Verdict:</strong> '
+        + html_safe(result.verdict.value)
+        + '<br><strong>Evidence source:</strong> '
+        + html_safe(result.source)
+        + '<br><strong>Claim type:</strong> '
+        + html_safe(claim_type)
+        + '<br><strong>Confidence / limitations:</strong> '
+        + html_safe(result.confidence_note)
+        + '</div>'
+        '</div>'
+    )
 
-        with col1:
-            st.markdown("**Classification**")
-            st.write(
-                kind.replace("_", " ").title()
-            )
-
-        with col2:
-            st.markdown("**Check verdict**")
-            st.write(result.verdict.value)
-
-        st.markdown("**Evidence source**")
-        st.write(
-            result.source or "Not available"
-        )
-
-        st.markdown("**Confidence and limitations**")
-        st.write(result.confidence_note)
-
-        if result.claim:
-            st.caption(
-                f"Claim type: {result.claim.claim_type}"
-            )
+    st.markdown(
+        card_html,
+        unsafe_allow_html=True,
+    )
 
 
-# ==========================================
+# ==================================================
 # SESSION STATE
-# ==========================================
+# ==================================================
 
 if "verification_report" not in st.session_state:
     st.session_state.verification_report = None
@@ -270,45 +586,53 @@ if "pdf_report_bytes" not in st.session_state:
     st.session_state.pdf_report_bytes = None
 
 
-# ==========================================
+# ==================================================
 # SIDEBAR
-# ==========================================
+# ==================================================
 
 with st.sidebar:
     st.title("🛡️ Trust Console")
-
-    st.caption(
-        "Offer Evidence Verifier"
-    )
+    st.caption("Offer Evidence Verifier")
 
     st.divider()
 
-    st.markdown("### Verification workflow")
+    st.markdown("### Workspace")
 
-    st.write("1. Submit offer text or PDF")
-    st.write("2. Configure optional checks")
-    st.write("3. Analyze evidence")
-    st.write("4. Review findings")
-    st.write("5. Download PDF or JSON")
-
-    st.divider()
-
-    st.markdown("### Evidence policy")
-
-    st.info(
-        "Risk indicators are not proof of fraud. "
-        "Supporting checks do not certify authenticity."
-    )
-
-    st.markdown("### Privacy")
-
-    st.caption(
-        "Common sensitive-number patterns are "
-        "masked before analysis. Names, emails "
-        "and other personal information may remain."
-    )
+    st.write("📄 Offer analysis")
+    st.write("🔎 Evidence checks")
+    st.write("🛡️ Risk signals")
+    st.write("📊 Evidence summary")
+    st.write("📥 Report export")
 
     st.divider()
+
+    st.markdown(
+        (
+            '<div class="sidebar-card">'
+            '<div class="sidebar-card-title">'
+            'Evidence-first verification'
+            '</div>'
+            '<div class="sidebar-card-body">'
+            'A risk signal does not prove fraud. '
+            'A supporting check does not certify authenticity.'
+            '</div></div>'
+        ),
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        (
+            '<div class="sidebar-card">'
+            '<div class="sidebar-card-title">'
+            'Privacy-aware workflow'
+            '</div>'
+            '<div class="sidebar-card-body">'
+            'Common sensitive-number patterns are masked. '
+            'Other personal information may remain.'
+            '</div></div>'
+        ),
+        unsafe_allow_html=True,
+    )
 
     if st.button(
         "Clear previous report",
@@ -319,43 +643,100 @@ with st.sidebar:
         st.rerun()
 
 
-# ==========================================
+# ==================================================
+# HEADER
+# ==================================================
+
+st.markdown(
+    (
+        '<div class="topbar">'
+        '<div>'
+        '<div class="brand-title">'
+        '🛡️ Offer Evidence Verifier'
+        '</div>'
+        '<div class="brand-subtitle">'
+        'Trust Intelligence Workspace'
+        '</div>'
+        '</div>'
+        '<div class="topbar-badge">'
+        'Evidence-first analysis'
+        '</div>'
+        '</div>'
+    ),
+    unsafe_allow_html=True,
+)
+
+
+# ==================================================
 # HERO
-# ==========================================
+# ==================================================
 
 st.markdown(
-    """
-    <div class="hero">
-        <div class="eyebrow">
-            Evidence-first verification platform
-        </div>
-        <div class="hero-title">
-            Offer Evidence Verifier
-        </div>
-        <div class="hero-subtitle">
-            Analyze internship and job offers using
-            explainable checks, structured evidence,
-            and transparent limitations.
-            <br>
-            Make informed decisions before trusting
-            unfamiliar recruitment communications.
-        </div>
-    </div>
-    """,
+    (
+        '<div class="hero">'
+        '<div class="hero-eyebrow">'
+        'RECRUITMENT EVIDENCE INTELLIGENCE'
+        '</div>'
+        '<div class="hero-title">'
+        'Know what you can verify.'
+        '</div>'
+        '<div class="hero-description">'
+        'Analyze recruitment claims, identify caution '
+        'signals and review structured evidence. '
+        'Understand what is supported, what conflicts, '
+        'and what still needs independent verification.'
+        '</div>'
+        '</div>'
+    ),
     unsafe_allow_html=True,
 )
 
 
-# ==========================================
-# INPUT SECTION
-# ==========================================
+# ==================================================
+# WORKFLOW
+# ==================================================
+
+workflow_steps = [
+    "01 · Submit offer",
+    "02 · Configure checks",
+    "03 · Analyze evidence",
+    "04 · Review findings",
+    "05 · Export report",
+]
+
+workflow_html = '<div class="workflow">'
+
+for index, step in enumerate(workflow_steps):
+    active_class = (
+        "workflow-step active"
+        if index == 0
+        else "workflow-step"
+    )
+
+    workflow_html += (
+        '<div class="'
+        + active_class
+        + '">'
+        + html_safe(step)
+        + '</div>'
+    )
+
+workflow_html += '</div>'
 
 st.markdown(
-    '<div class="section-label">01 / Input</div>',
+    workflow_html,
     unsafe_allow_html=True,
 )
 
-st.subheader("Submit an offer")
+
+# ==================================================
+# OFFER INPUT
+# ==================================================
+
+section(
+    "01 / Input",
+    "Submit an offer",
+)
 
 input_mode = st.radio(
     "Input method",
@@ -368,7 +749,7 @@ offer_text = ""
 if input_mode == "Paste Text":
     offer_text = st.text_area(
         "Offer content",
-        height=240,
+        height=230,
         placeholder=(
             "Company: Example Technologies\n"
             "Role: Software Developer Intern\n"
@@ -382,8 +763,8 @@ else:
         "Upload a text-based PDF",
         type=["pdf"],
         help=(
-            "Maximum 5 MB and 15 pages. "
-            "Scanned image PDFs are not supported."
+            "Text-based PDFs only. "
+            "Scanned PDFs are not supported."
         ),
     )
 
@@ -394,65 +775,67 @@ else:
             )
 
             st.success(
-                "Document text extracted."
+                "PDF text extracted successfully."
             )
 
             with st.expander(
-                "Preview extracted content"
+                "Preview extracted text"
             ):
                 st.text(
-                    mask_sensitive_data(
-                        offer_text
-                    )[:5000]
+                    mask_sensitive_data(offer_text)[:5000]
                 )
 
         except Exception as exc:
             st.error(
-                f"Could not read PDF: {exc}"
+                f"Could not process PDF: {exc}"
             )
 
 
-# ==========================================
-# CONFIGURATION
-# ==========================================
+# ==================================================
+# VERIFICATION SETTINGS
+# ==================================================
 
-st.markdown(
-    '<div class="section-label">02 / Configuration</div>',
-    unsafe_allow_html=True,
+section(
+    "02 / Configuration",
+    "Verification settings",
 )
-
-st.subheader("Verification settings")
 
 left, right = st.columns(2)
 
 with left:
     official_domain = st.text_input(
-        "Official employer domain",
+        "Independently confirmed employer domain",
         placeholder="example.com",
         help=(
-            "Optional. Enter only a domain confirmed "
-            "independently of the submitted offer."
+            "Optional. Confirm the official domain "
+            "outside the submitted offer."
         ),
     )
 
 with right:
     enable_domain_intelligence = st.checkbox(
-        "Enable domain intelligence",
+        "Enable RDAP and DNS intelligence",
         value=False,
         help=(
-            "Perform optional RDAP and DNS lookups. "
-            "These can take several seconds."
+            "Optional network checks. "
+            "Domain age does not prove authenticity."
         ),
     )
 
 
-# ==========================================
+# ==================================================
 # ANALYSIS
-# ==========================================
+# ==================================================
 
-st.markdown(
-    '<div class="section-label">03 / Analysis</div>',
-    unsafe_allow_html=True,
+section(
+    "03 / Analysis",
+    "Run evidence verification",
+)
+
+st.caption(
+    "The system uses rule-based checks and optional "
+    "domain intelligence. It does not make a final "
+    "fraud determination."
 )
 
 if st.button(
@@ -465,12 +848,12 @@ if st.button(
 
     if not offer_text.strip():
         st.warning(
-            "Please submit offer text or a readable PDF."
+            "Please provide offer text or a readable PDF."
         )
 
     else:
         with st.spinner(
-            "Extracting claims and analyzing evidence..."
+            "Extracting claims and evaluating evidence..."
         ):
             try:
                 masked_text = mask_sensitive_data(
@@ -501,24 +884,27 @@ if st.button(
                 st.stop()
 
 
-# ==========================================
+# ==================================================
 # RESULTS
-# ==========================================
+# ==================================================
 
 report = st.session_state.verification_report
 
 if report is not None:
     st.divider()
 
-    st.markdown(
-        '<div class="section-label">04 / Results</div>',
-        unsafe_allow_html=True,
+    section(
+        "04 / Results",
+        "Evidence overview",
     )
 
-    st.subheader("Evidence overview")
-
     st.success(
-        "Analysis completed successfully."
+        "Analysis completed. Review the evidence below."
+    )
+
+    st.caption(
+        "Report ID: "
+        + mask_sensitive_data(str(report.report_id))
     )
 
     groups = {
@@ -532,39 +918,51 @@ if report is not None:
         kind = get_finding_type(result)
         groups.setdefault(kind, []).append(result)
 
-    metric1, metric2, metric3, metric4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns(4)
 
-    metric1.metric(
-        "Risk signals",
-        len(groups["risk_signal"]),
-    )
+    with col1:
+        render_metric(
+            "Risk signals",
+            len(groups["risk_signal"]),
+            "Caution indicators",
+            "#B45309",
+        )
 
-    metric2.metric(
-        "Contradictions",
-        len(groups["contradiction"]),
-    )
+    with col2:
+        render_metric(
+            "Contradictions",
+            len(groups["contradiction"]),
+            "Conflicting evidence",
+            "#B91C1C",
+        )
 
-    metric3.metric(
-        "Supporting checks",
-        len(groups["supporting_evidence"]),
-    )
+    with col3:
+        render_metric(
+            "Supporting checks",
+            len(groups["supporting_evidence"]),
+            "Limited supporting evidence",
+            "#0F766E",
+        )
 
-    metric4.metric(
-        "Unverified",
-        len(groups["unknown"]),
-    )
+    with col4:
+        render_metric(
+            "Unverified",
+            len(groups["unknown"]),
+            "Requires further checks",
+            "#475569",
+        )
 
     st.caption(
-        "Counts describe individual findings. "
-        "They are not an authenticity score."
+        "These counts represent findings, not "
+        "a fraud probability or authenticity score."
     )
 
-    st.markdown(
-        '<div class="section-label">05 / Evidence</div>',
-        unsafe_allow_html=True,
+    section(
+        "05 / Findings",
+        "Evidence breakdown",
     )
 
-    sections = [
+    categories = [
         (
             "⚠️ Risk signals",
             groups["risk_signal"],
@@ -574,7 +972,7 @@ if report is not None:
             groups["contradiction"],
         ),
         (
-            "✅ Supporting evidence",
+            "✅ Supporting checks",
             groups["supporting_evidence"],
         ),
         (
@@ -583,44 +981,55 @@ if report is not None:
         ),
     ]
 
-    for title, findings in sections:
-        st.subheader(title)
+    for heading, findings in categories:
+        st.subheader(heading)
 
         if not findings:
-            st.info(
+            st.caption(
                 "No findings in this category."
             )
         else:
             for finding in findings:
-                show_evidence(finding)
+                render_evidence_card(finding)
 
-    st.markdown(
-        '<div class="section-label">06 / Next Steps</div>',
-        unsafe_allow_html=True,
+    section(
+        "06 / Guidance",
+        "Recommended next steps",
     )
 
-    st.subheader("Recommended actions")
-
-    for index, step in enumerate(
-        report.safe_steps,
-        start=1,
-    ):
-        st.write(
-            f"**{index}.** {step}"
+    if report.safe_steps:
+        for index, step in enumerate(
+            report.safe_steps,
+            start=1,
+        ):
+            st.write(
+                f"**{index}.** "
+                + mask_sensitive_data(str(step))
+            )
+    else:
+        st.info(
+            "No specific recommendations were generated."
         )
 
-    st.info(report.disclaimer)
-
-    st.markdown(
-        '<div class="section-label">07 / Export</div>',
-        unsafe_allow_html=True,
+    st.info(
+        mask_sensitive_data(str(report.disclaimer))
     )
 
-    st.subheader("Download evidence report")
+    section(
+        "07 / Export",
+        "Download evidence report",
+    )
 
-    st.write(
-        "Export the findings as a professional PDF "
-        "or machine-readable JSON file."
+    st.markdown(
+        (
+            '<div class="export-panel">'
+            '<strong>Report ready</strong><br>'
+            'Download the evidence summary, individual '
+            'findings, sources, limitations and '
+            'recommended actions.'
+            '</div>'
+        ),
+        unsafe_allow_html=True,
     )
 
     pdf_col, json_col = st.columns(2)
@@ -635,9 +1044,7 @@ if report is not None:
         )
 
     with json_col:
-        export_data = safe_report_dict(
-            report
-        )
+        export_data = safe_report_dict(report)
 
         st.download_button(
             "📋 Download JSON Report",
@@ -651,22 +1058,33 @@ if report is not None:
             use_container_width=True,
         )
 
+    st.caption(
+        "Review exported reports before sharing. "
+        "Masking does not remove every form of "
+        "personal information."
+    )
 
-# ==========================================
+
+# ==================================================
 # FOOTER
-# ==========================================
+# ==================================================
 
 st.markdown(
-    """
-    <div class="footer-note">
-        Offer Evidence Verifier · Evidence-based decision support
-        <br>
-        No automated finding is a final determination
-        of authenticity or fraud.
-    </div>
-    """,
+    (
+        '<div class="footer-note">'
+        'Offer Evidence Verifier · Trust Intelligence Workspace'
+        '<br>'
+        'Evidence-based decision support. '
+        'No automated finding is a final determination '
+        'of authenticity or fraud.'
+        '</div>'
+    ),
     unsafe_allow_html=True,
 )
+
+
+
+
 
 
 
