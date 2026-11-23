@@ -1,49 +1,61 @@
 
 import re
 
-from core.schemas import Claim, CheckResult, Verdict
-
+from core.schemas import (
+    Claim,
+    CheckResult,
+    FindingType,
+    Verdict,
+)
 
 PATTERNS = {
-    "urgent_deadline": [
-        r"\bwithin\s+\d+\s*(?:hours?|hrs?|days?)\b",
-        r"\bpay\s+(?:immediately|today|now)\b",
+    "Immediate payment pressure": (
+        r"\bpay\s+immediately\b",
+        r"\bpay\s+now\b",
+        r"\bpayment\s+within\s+\d+\s*(hours?|days?)\b",
+    ),
+    "Artificial urgency": (
         r"\blimited\s+time\b",
-        r"\bfinal\s+warning\b",
-    ],
-    "messaging_channel": [
+        r"\bact\s+now\b",
+        r"\bwithin\s+\d+\s*(hours?|days?)\b",
+        r"\brespond\s+immediately\b",
+    ),
+    "Messaging-app communication": (
         r"\bwhatsapp\b",
         r"\btelegram\b",
-    ],
-    "guaranteed_job": [
-        r"\bguaranteed\s+(?:job|placement|selection)\b",
-        r"\b100%\s+(?:guaranteed\s+)?(?:job|placement|selection)\b",
-    ],
-    "no_interview": [
-        r"\bno\s+interview\s+(?:required|needed)\b",
-        r"\bwithout\s+(?:any\s+)?interview\b",
-    ],
+    ),
+    "Unusual hiring promise": (
+        r"\bguaranteed\s+job\b",
+        r"\bno\s+interview\s+required\b",
+    ),
 }
 
-
 def check_urgency_channel(claim: Claim) -> CheckResult:
-    text = claim.value.lower()
-    detected = []
+    text = claim.value or ""
+    signals = []
 
-    for category, patterns in PATTERNS.items():
-        if any(re.search(pattern, text) for pattern in patterns):
-            detected.append(category)
+    for label, expressions in PATTERNS.items():
+        if any(
+            re.search(expression, text, re.IGNORECASE)
+            for expression in expressions
+        ):
+            signals.append(label)
 
-    if not detected:
+    if signals:
         return CheckResult(
             claim=claim,
             check_name="urgency_channel",
-            finding="No configured warning patterns detected.",
+            finding=(
+                "Potential caution signals: "
+                + "; ".join(signals)
+            ),
             source="Submitted offer text",
             verdict=Verdict.COULD_NOT_VERIFY,
+            finding_type=FindingType.RISK_SIGNAL,
             confidence_note=(
-                "Absence of warning patterns does not "
-                "verify the offer."
+                "These patterns can also occur in legitimate "
+                "communications. They are not proof of fraud. "
+                "Review the context and verify independently."
             ),
         )
 
@@ -51,13 +63,13 @@ def check_urgency_channel(claim: Claim) -> CheckResult:
         claim=claim,
         check_name="urgency_channel",
         finding=(
-            "Detected recruitment warning signals: "
-            + ", ".join(detected)
+            "No recognized urgency or communication "
+            "warning patterns detected."
         ),
         source="Submitted offer text",
-        verdict=Verdict.INCONSISTENT,
+        verdict=Verdict.COULD_NOT_VERIFY,
+        finding_type=FindingType.UNKNOWN,
         confidence_note=(
-            "These are risk signals, not proof of fraud. "
-            "Messaging apps alone do not indicate fraud."
+            "Absence of these patterns does not verify an offer."
         ),
     )

@@ -12,6 +12,13 @@ class Verdict(str, Enum):
     COULD_NOT_VERIFY = "Couldn't verify"
 
 
+class FindingType(str, Enum):
+    SUPPORTING_EVIDENCE = "supporting_evidence"
+    CONTRADICTION = "contradiction"
+    RISK_SIGNAL = "risk_signal"
+    UNKNOWN = "unknown"
+
+
 class Claim(BaseModel):
     claim_id: str
     claim_type: str
@@ -26,17 +33,22 @@ class CheckResult(BaseModel):
     source: Optional[str] = None
     verdict: Verdict
     confidence_note: str
+    finding_type: FindingType = FindingType.UNKNOWN
 
 
 class VerificationReport(BaseModel):
     report_id: str
+
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
+
     claims: list[Claim] = Field(default_factory=list)
     checks: list[CheckResult] = Field(default_factory=list)
     safe_steps: list[str] = Field(default_factory=list)
+
     disclaimer: str = (
         "This report provides decision support, "
         "not a final determination of authenticity or fraud."
     )
+
