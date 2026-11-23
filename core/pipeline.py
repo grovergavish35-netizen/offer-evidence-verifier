@@ -23,48 +23,64 @@ def verify_offer(
     official_domain: str | None = None,
     enable_domain_intelligence: bool = False,
 ) -> VerificationReport:
+    """
+    Run explainable offer-evidence checks.
+
+    Findings describe available evidence, not a
+    definitive determination of fraud or authenticity.
+    """
 
     claims = extract_claims(text)
     results = []
 
+    # ----------------------------------------------
+    # Recruiter email checks
+    # ----------------------------------------------
+
+    checked_emails = set()
+
     for claim in claims:
-        if claim.claim_type == "sender_email":
-            email_result = check_email_domain(
-                claim,
-                official_domain,
+        if claim.claim_type != "sender_email":
+            continue
+
+        email = (claim.value or "").strip().lower()
+
+        # Avoid duplicate checks for repeated addresses.
+        if email in checked_emails:
+            continue
+
+        checked_emails.add(email)
+
+        email_result = check_email_domain(
+            claim,
+            official_domain,
+        )
+
+        results.append(email_result)
+
+        # Optional domain intelligence remains opt-in.
+        if enable_domain_intelligence:
+            domain_result = (
+                check_recruiter_domain_intelligence(
+                    claim.value
+                )
             )
 
-            # A matching reference domain is limited
-            # supporting evidence, not proof of authenticity.
-            if email_result.verdict == Verdict.VERIFIED:
-                email_result.finding_type = (
-                    FindingType.SUPPORTING_EVIDENCE
+            # Domain age and network intelligence
+            # cannot establish fraud by themselves.
+            if domain_result.verdict == Verdict.INCONSISTENT:
+                domain_result.verdict = (
+                    Verdict.COULD_NOT_VERIFY
                 )
-            elif email_result.verdict == Verdict.INCONSISTENT:
-                email_result.finding_type = (
-                    FindingType.CONTRADICTION
-                )
-
-            results.append(email_result)
-
-            if enable_domain_intelligence:
-                domain_result = (
-                    check_recruiter_domain_intelligence(
-                        claim.value
-                    )
+                domain_result.finding_type = (
+                    FindingType.RISK_SIGNAL
                 )
 
-                # Young domain = risk signal,
-                # not a contradiction.
-                if domain_result.verdict == Verdict.INCONSISTENT:
-                    domain_result.verdict = (
-                        Verdict.COULD_NOT_VERIFY
-                    )
-                    domain_result.finding_type = (
-                        FindingType.RISK_SIGNAL
-                    )
+            results.append(domain_result)
 
-                results.append(domain_result)
+    # ----------------------------------------------
+    # Full-text checks
+    # ----------------------------------------------
 
     full_text_claim = Claim(
         claim_id="FULL_TEXT",
@@ -72,6 +88,7 @@ def verify_offer(
         value=text,
     )
 
+    # Use full text so fee negations remain visible.
     fee_result = check_fee_request(full_text_claim)
     results.append(fee_result)
 
@@ -88,6 +105,10 @@ def verify_offer(
         )
 
     results.append(consistency_result)
+
+    # ----------------------------------------------
+    # Safe guidance
+    # ----------------------------------------------
 
     has_fee_warning = (
         fee_result.finding_type == FindingType.RISK_SIGNAL
@@ -106,18 +127,25 @@ def verify_offer(
         for result in results
     )
 
+    has_channel_warning = (
+        urgency_result.finding_type
+        == FindingType.RISK_SIGNAL
+    )
+
     safe_steps = [
         (
-            "Verify the employer through a website or "
-            "phone number found independently."
+            "Verify the employer using a website or "
+            "telephone number found independently "
+            "of the submitted offer."
         ),
         (
             "Do not share passwords, Aadhaar, PAN "
-            "or bank details with unverified contacts."
+            "or banking details with unverified contacts."
         ),
         (
-            "Review each finding in context. "
-            "Warning signals do not prove fraud."
+            "Review every finding in context. "
+            "Risk signals do not prove fraud, and "
+            "supporting checks do not certify authenticity."
         ),
     ]
 
@@ -125,8 +153,19 @@ def verify_offer(
         safe_steps.insert(
             0,
             (
-                "Confirm the recruiter through the "
-                "employer's independently verified channel."
+                "Confirm the recruiter's identity and "
+                "authorization through an independently "
+                "verified employer channel."
+            ),
+        )
+
+    if has_channel_warning:
+        safe_steps.insert(
+            0,
+            (
+                "Confirm unusual communication requests "
+                "and urgent deadlines through the "
+                "employer's official recruitment channel."
             ),
         )
 
@@ -134,8 +173,9 @@ def verify_offer(
         safe_steps.insert(
             0,
             (
-                "Do not pay recruitment fees until "
-                "the request is independently verified."
+                "Do not make recruitment-related payments "
+                "until the request has been independently "
+                "verified."
             ),
         )
 
