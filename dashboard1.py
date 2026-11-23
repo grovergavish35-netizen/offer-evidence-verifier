@@ -10,49 +10,161 @@ from core.privacy import mask_sensitive_data
 from core.schemas import FindingType
 
 
+# ==========================================
+# PAGE CONFIGURATION
+# ==========================================
+
 st.set_page_config(
     page_title="Offer Evidence Verifier",
     page_icon="🛡️",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
+
+
+# ==========================================
+# DESIGN SYSTEM
+# ==========================================
 
 st.markdown(
     """
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
+
     .stApp {
-        background: #0b1220;
+        background: #080f1d;
         color: #e5e7eb;
     }
 
-    h1, h2, h3 {
-        color: #f8fafc;
+    .block-container {
+        max-width: 1320px;
+        padding-top: 2rem;
+        padding-bottom: 4rem;
     }
 
-    .block-container {
-        max-width: 1200px;
-        padding-top: 2rem;
+    h1, h2, h3 {
+        color: #f8fafc !important;
+    }
+
+    h1 {
+        font-weight: 800 !important;
+        letter-spacing: -1px;
     }
 
     div[data-testid="stMetric"] {
-        background: #172033;
-        border: 1px solid #334155;
-        border-radius: 12px;
-        padding: 16px;
+        background: #121e31;
+        border: 1px solid #26364f;
+        border-radius: 14px;
+        padding: 18px;
+        min-height: 115px;
     }
 
-    .subtitle {
+    div[data-testid="stMetricLabel"] {
         color: #94a3b8;
-        font-size: 1.05rem;
-        margin-bottom: 1.5rem;
     }
 
-    .notice {
-        border: 1px solid #334155;
-        background: #111c2d;
-        padding: 14px;
+    div[data-testid="stMetricValue"] {
+        color: #f8fafc;
+    }
+
+    div[data-testid="stExpander"] {
+        background: #111c2e;
+        border: 1px solid #26364f;
+        border-radius: 12px;
+        margin-bottom: 10px;
+    }
+
+    .hero {
+        background: linear-gradient(
+            120deg,
+            #102344 0%,
+            #0d1a30 65%,
+            #101c31 100%
+        );
+        border: 1px solid #28436b;
+        border-radius: 20px;
+        padding: 30px;
+        margin-bottom: 25px;
+    }
+
+    .hero-title {
+        font-size: 34px;
+        font-weight: 800;
+        color: #f8fafc;
+        letter-spacing: -1px;
+        margin-bottom: 8px;
+    }
+
+    .hero-subtitle {
+        color: #a7b8d0;
+        font-size: 15px;
+        line-height: 1.7;
+    }
+
+    .eyebrow {
+        color: #60a5fa;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 1.6px;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+    }
+
+    .info-panel {
+        background: #111c2e;
+        border: 1px solid #26364f;
+        border-radius: 12px;
+        padding: 18px;
+        margin-bottom: 18px;
+    }
+
+    .info-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #e2e8f0;
+        margin-bottom: 8px;
+    }
+
+    .info-text {
+        font-size: 13px;
+        color: #94a3b8;
+        line-height: 1.7;
+    }
+
+    .section-label {
+        color: #60a5fa;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-top: 12px;
+    }
+
+    .footer-note {
+        color: #64748b;
+        font-size: 12px;
+        text-align: center;
+        margin-top: 35px;
+    }
+
+    div.stButton > button[kind="primary"] {
+        background: #2563eb;
         border-radius: 10px;
-        color: #cbd5e1;
-        margin-bottom: 16px;
+        border: none;
+        font-weight: 700;
+        min-height: 48px;
+    }
+
+    div.stButton > button[kind="primary"]:hover {
+        background: #1d4ed8;
+    }
+
+    div[data-testid="stFileUploader"] {
+        border-radius: 12px;
     }
     </style>
     """,
@@ -60,7 +172,11 @@ st.markdown(
 )
 
 
-def result_type(result):
+# ==========================================
+# HELPER FUNCTIONS
+# ==========================================
+
+def get_finding_type(result):
     kind = getattr(
         result,
         "finding_type",
@@ -71,47 +187,6 @@ def result_type(result):
         return kind.value
 
     return str(kind)
-
-
-def show_result(result):
-    kind = result_type(result)
-
-    icons = {
-        "risk_signal": "⚠️",
-        "contradiction": "❌",
-        "supporting_evidence": "✅",
-        "unknown": "🔎",
-    }
-
-    title = (
-        f"{icons.get(kind, '🔎')} "
-        f"{result.check_name.replace('_', ' ').title()}"
-    )
-
-    with st.expander(title):
-        st.write("**Finding:**", result.finding)
-        st.write(
-            "**Finding type:**",
-            kind.replace("_", " ").title(),
-        )
-        st.write(
-            "**Check verdict:**",
-            result.verdict.value,
-        )
-        st.write(
-            "**Confidence note:**",
-            result.confidence_note,
-        )
-        st.write(
-            "**Evidence source:**",
-            result.source or "Not available",
-        )
-
-        if result.claim:
-            st.write(
-                "**Claim type:**",
-                result.claim.claim_type,
-            )
 
 
 def safe_report_dict(report):
@@ -138,6 +213,56 @@ def safe_report_dict(report):
     return sanitize(data)
 
 
+def show_evidence(result):
+    kind = get_finding_type(result)
+
+    icons = {
+        "risk_signal": "⚠️",
+        "contradiction": "❌",
+        "supporting_evidence": "✅",
+        "unknown": "🔎",
+    }
+
+    label = result.check_name.replace(
+        "_", " "
+    ).title()
+
+    with st.expander(
+        f"{icons.get(kind, '🔎')} {label}"
+    ):
+        st.markdown("**Finding**")
+        st.write(result.finding)
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("**Classification**")
+            st.write(
+                kind.replace("_", " ").title()
+            )
+
+        with col2:
+            st.markdown("**Check verdict**")
+            st.write(result.verdict.value)
+
+        st.markdown("**Evidence source**")
+        st.write(
+            result.source or "Not available"
+        )
+
+        st.markdown("**Confidence and limitations**")
+        st.write(result.confidence_note)
+
+        if result.claim:
+            st.caption(
+                f"Claim type: {result.claim.claim_type}"
+            )
+
+
+# ==========================================
+# SESSION STATE
+# ==========================================
+
 if "verification_report" not in st.session_state:
     st.session_state.verification_report = None
 
@@ -145,40 +270,108 @@ if "pdf_report_bytes" not in st.session_state:
     st.session_state.pdf_report_bytes = None
 
 
-st.title("🛡️ Offer Evidence Verifier")
+# ==========================================
+# SIDEBAR
+# ==========================================
+
+with st.sidebar:
+    st.title("🛡️ Trust Console")
+
+    st.caption(
+        "Offer Evidence Verifier"
+    )
+
+    st.divider()
+
+    st.markdown("### Verification workflow")
+
+    st.write("1. Submit offer text or PDF")
+    st.write("2. Configure optional checks")
+    st.write("3. Analyze evidence")
+    st.write("4. Review findings")
+    st.write("5. Download PDF or JSON")
+
+    st.divider()
+
+    st.markdown("### Evidence policy")
+
+    st.info(
+        "Risk indicators are not proof of fraud. "
+        "Supporting checks do not certify authenticity."
+    )
+
+    st.markdown("### Privacy")
+
+    st.caption(
+        "Common sensitive-number patterns are "
+        "masked before analysis. Names, emails "
+        "and other personal information may remain."
+    )
+
+    st.divider()
+
+    if st.button(
+        "Clear previous report",
+        use_container_width=True,
+    ):
+        st.session_state.verification_report = None
+        st.session_state.pdf_report_bytes = None
+        st.rerun()
+
+
+# ==========================================
+# HERO
+# ==========================================
 
 st.markdown(
-    '<div class="subtitle">'
-    "Evidence-first internship and job offer screening"
-    "</div>",
+    """
+    <div class="hero">
+        <div class="eyebrow">
+            Evidence-first verification platform
+        </div>
+        <div class="hero-title">
+            Offer Evidence Verifier
+        </div>
+        <div class="hero-subtitle">
+            Analyze internship and job offers using
+            explainable checks, structured evidence,
+            and transparent limitations.
+            <br>
+            Make informed decisions before trusting
+            unfamiliar recruitment communications.
+        </div>
+    </div>
+    """,
     unsafe_allow_html=True,
 )
 
+
+# ==========================================
+# INPUT SECTION
+# ==========================================
+
 st.markdown(
-    '<div class="notice">'
-    "This tool evaluates selected claims and warning "
-    "patterns. It cannot certify that an offer is "
-    "genuine or fraudulent."
-    "</div>",
+    '<div class="section-label">01 / Input</div>',
     unsafe_allow_html=True,
 )
 
+st.subheader("Submit an offer")
 
-mode = st.radio(
-    "Choose input method",
+input_mode = st.radio(
+    "Input method",
     ["Paste Text", "Upload PDF"],
     horizontal=True,
 )
 
 offer_text = ""
 
-if mode == "Paste Text":
+if input_mode == "Paste Text":
     offer_text = st.text_area(
-        "Paste your internship or job offer",
-        height=260,
+        "Offer content",
+        height=240,
         placeholder=(
             "Company: Example Technologies\n"
-            "Role: Software Intern\n"
+            "Role: Software Developer Intern\n"
             "Recruiter: hr@example.com\n"
             "No registration fee required."
         ),
@@ -188,6 +381,10 @@ else:
     uploaded_file = st.file_uploader(
         "Upload a text-based PDF",
         type=["pdf"],
+        help=(
+            "Maximum 5 MB and 15 pages. "
+            "Scanned image PDFs are not supported."
+        ),
     )
 
     if uploaded_file is not None:
@@ -197,58 +394,83 @@ else:
             )
 
             st.success(
-                "PDF text extracted successfully."
+                "Document text extracted."
             )
 
-            with st.expander("Preview extracted text"):
+            with st.expander(
+                "Preview extracted content"
+            ):
                 st.text(
-                    mask_sensitive_data(offer_text)[:5000]
+                    mask_sensitive_data(
+                        offer_text
+                    )[:5000]
                 )
 
         except Exception as exc:
             st.error(
-                f"PDF could not be processed: {exc}"
+                f"Could not read PDF: {exc}"
             )
 
 
+# ==========================================
+# CONFIGURATION
+# ==========================================
+
+st.markdown(
+    '<div class="section-label">02 / Configuration</div>',
+    unsafe_allow_html=True,
+)
+
 st.subheader("Verification settings")
 
-official_domain = st.text_input(
-    "Independently confirmed official company domain",
-    placeholder="example.com",
-    help=(
-        "Optional. Verify this domain outside the "
-        "submitted offer before entering it."
-    ),
-)
+left, right = st.columns(2)
 
-enable_domain_intelligence = st.checkbox(
-    "Enable RDAP and DNS domain intelligence",
-    value=False,
-    help=(
-        "Optional network lookups. Domain age and "
-        "MX records do not authenticate a recruiter."
-    ),
-)
+with left:
+    official_domain = st.text_input(
+        "Official employer domain",
+        placeholder="example.com",
+        help=(
+            "Optional. Enter only a domain confirmed "
+            "independently of the submitted offer."
+        ),
+    )
 
+with right:
+    enable_domain_intelligence = st.checkbox(
+        "Enable domain intelligence",
+        value=False,
+        help=(
+            "Perform optional RDAP and DNS lookups. "
+            "These can take several seconds."
+        ),
+    )
+
+
+# ==========================================
+# ANALYSIS
+# ==========================================
+
+st.markdown(
+    '<div class="section-label">03 / Analysis</div>',
+    unsafe_allow_html=True,
+)
 
 if st.button(
     "Analyze Offer",
     type="primary",
     use_container_width=True,
 ):
-    # Clear stale results before a new analysis.
     st.session_state.verification_report = None
     st.session_state.pdf_report_bytes = None
 
     if not offer_text.strip():
         st.warning(
-            "Please paste offer text or upload a readable PDF."
+            "Please submit offer text or a readable PDF."
         )
 
     else:
         with st.spinner(
-            "Analyzing evidence and preparing report..."
+            "Extracting claims and analyzing evidence..."
         ):
             try:
                 masked_text = mask_sensitive_data(
@@ -276,14 +498,28 @@ if st.button(
                 st.error(
                     f"Analysis failed: {exc}"
                 )
-
                 st.stop()
 
+
+# ==========================================
+# RESULTS
+# ==========================================
 
 report = st.session_state.verification_report
 
 if report is not None:
-    st.success("Evidence analysis completed.")
+    st.divider()
+
+    st.markdown(
+        '<div class="section-label">04 / Results</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.subheader("Evidence overview")
+
+    st.success(
+        "Analysis completed successfully."
+    )
 
     groups = {
         "risk_signal": [],
@@ -293,84 +529,105 @@ if report is not None:
     }
 
     for result in report.checks:
-        kind = result_type(result)
+        kind = get_finding_type(result)
         groups.setdefault(kind, []).append(result)
 
-    st.subheader("Evidence summary")
+    metric1, metric2, metric3, metric4 = st.columns(4)
 
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric(
+    metric1.metric(
         "Risk signals",
         len(groups["risk_signal"]),
     )
 
-    col2.metric(
+    metric2.metric(
         "Contradictions",
         len(groups["contradiction"]),
     )
 
-    col3.metric(
+    metric3.metric(
         "Supporting checks",
         len(groups["supporting_evidence"]),
     )
 
-    col4.metric(
-        "Unverified checks",
+    metric4.metric(
+        "Unverified",
         len(groups["unknown"]),
     )
 
     st.caption(
-        "These are counts of findings, not an "
-        "authenticity score or fraud probability."
+        "Counts describe individual findings. "
+        "They are not an authenticity score."
+    )
+
+    st.markdown(
+        '<div class="section-label">05 / Evidence</div>',
+        unsafe_allow_html=True,
     )
 
     sections = [
-        ("⚠️ Risk signals", groups["risk_signal"]),
-        ("❌ Contradictions", groups["contradiction"]),
+        (
+            "⚠️ Risk signals",
+            groups["risk_signal"],
+        ),
+        (
+            "❌ Contradictions",
+            groups["contradiction"],
+        ),
         (
             "✅ Supporting evidence",
             groups["supporting_evidence"],
         ),
         (
-            "🔎 Unverified or unknown",
+            "🔎 Unknown / unverified",
             groups["unknown"],
         ),
     ]
 
-    for heading, items in sections:
-        st.subheader(heading)
+    for title, findings in sections:
+        st.subheader(title)
 
-        if not items:
+        if not findings:
             st.info(
                 "No findings in this category."
             )
         else:
-            for result in items:
-                show_result(result)
+            for finding in findings:
+                show_evidence(finding)
 
-    st.subheader("Recommended next steps")
+    st.markdown(
+        '<div class="section-label">06 / Next Steps</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.subheader("Recommended actions")
 
     for index, step in enumerate(
         report.safe_steps,
         start=1,
     ):
-        st.write(f"{index}. {step}")
+        st.write(
+            f"**{index}.** {step}"
+        )
 
     st.info(report.disclaimer)
 
-    st.subheader("Download Evidence Report")
+    st.markdown(
+        '<div class="section-label">07 / Export</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.subheader("Download evidence report")
 
     st.write(
-        "Download the complete analysis as a "
-        "professional PDF or structured JSON report."
+        "Export the findings as a professional PDF "
+        "or machine-readable JSON file."
     )
 
     pdf_col, json_col = st.columns(2)
 
     with pdf_col:
         st.download_button(
-            label="📄 Download PDF Report",
+            "📄 Download PDF Report",
             data=st.session_state.pdf_report_bytes,
             file_name="offer_evidence_report.pdf",
             mime="application/pdf",
@@ -378,10 +635,12 @@ if report is not None:
         )
 
     with json_col:
-        export_data = safe_report_dict(report)
+        export_data = safe_report_dict(
+            report
+        )
 
         st.download_button(
-            label="📋 Download JSON Report",
+            "📋 Download JSON Report",
             data=json.dumps(
                 export_data,
                 indent=2,
@@ -392,11 +651,23 @@ if report is not None:
             use_container_width=True,
         )
 
-    st.caption(
-        "Common sensitive-number patterns are masked, "
-        "but names, email addresses and other personal "
-        "information may remain. Review before sharing."
-    )
+
+# ==========================================
+# FOOTER
+# ==========================================
+
+st.markdown(
+    """
+    <div class="footer-note">
+        Offer Evidence Verifier · Evidence-based decision support
+        <br>
+        No automated finding is a final determination
+        of authenticity or fraud.
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 
 
