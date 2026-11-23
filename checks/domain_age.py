@@ -5,21 +5,19 @@ from urllib.parse import urlparse
 import dns.resolver
 import requests
 
-from core.schemas import Claim, CheckResult, Verdict
-
-
-BOOTSTRAP_URL = (
-    "https://data.iana.org/rdap/dns.json"
+from core.schemas import (
+    Claim,
+    CheckResult,
+    FindingType,
+    Verdict,
 )
 
+BOOTSTRAP_URL = "https://data.iana.org/rdap/dns.json"
 
 def normalize_domain(domain: str) -> str:
-    """Accept a bare domain and normalize its casing."""
     return domain.strip().lower().rstrip(".")
 
-
 def get_rdap_server(domain: str) -> str | None:
-    """Find the RDAP server for the domain's TLD."""
     tld = domain.rsplit(".", 1)[-1]
 
     response = requests.get(
@@ -32,21 +30,23 @@ def get_rdap_server(domain: str) -> str | None:
 
     for tlds, servers in data.get("services", []):
         if tld in [item.lower() for item in tlds]:
-            if servers:
-                return servers[0]
+            for server in servers:
+                parsed = urlparse(server)
+
+                if (
+                    parsed.scheme == "https"
+                    and parsed.hostname
+                    and not parsed.username
+                    and not parsed.password
+                ):
+                    return server
 
     return None
 
-
 def get_registration_date(domain: str):
-    """Read registration date from RDAP if available."""
     server = get_rdap_server(domain)
 
     if not server:
-        return None
-
-    # Only use HTTPS RDAP services.
-    if urlparse(server).scheme != "https":
         return None
 
     url = server.rstrip("/") + "/domain/" + domain
@@ -55,6 +55,7 @@ def get_registration_date(domain: str):
         url,
         timeout=8,
         headers={"Accept": "application/rdap+json"},
+        allow_redirects=False,
     )
     response.raise_for_status()
 
@@ -65,15 +66,20 @@ def get_registration_date(domain: str):
             date_string = event.get("eventDate")
 
             if date_string:
-                return datetime.fromisoformat(
+                result = datetime.fromisoformat(
                     date_string.replace("Z", "+00:00")
                 )
 
+                if result.tzinfo is None:
+                    result = result.replace(
+                        tzinfo=timezone.utc
+                    )
+
+                return result
+
     return None
 
-
 def get_mx_records(domain: str):
-    """Return MX records, or None if lookup fails."""
     try:
         answers = dns.resolver.resolve(
             domain,
@@ -85,19 +91,14 @@ def get_mx_records(domain: str):
     except dns.resolver.NoAnswer:
         return []
 
-    except (
-        dns.resolver.NXDOMAIN,
-        dns.resolver.Timeout,
-        dns.resolver.NoNameservers,
-    ):
+    except dns.exception.DNSException:
         return None
-
 
 def check_domain_age(
     claim: Claim,
     domain: str,
 ) -> CheckResult:
-    """Return evidence about domain registration and DNS."""
+
     domain = normalize_domain(domain)
 
     if (
@@ -112,12 +113,18 @@ def check_domain_age(
             finding="Invalid domain input.",
             source=None,
             verdict=Verdict.COULD_NOT_VERIFY,
+            finding_type=FindingType.UNKNOWN,
             confidence_note="Domain could not be validated.",
         )
 
     try:
         registration_date = get_registration_date(domain)
-    except (requests.RequestException, ValueError, KeyError):
+    except (
+        requests.RequestException,
+        ValueError,
+        KeyError,
+        TypeError,
+    ):
         registration_date = None
 
     mx_records = get_mx_records(domain)
@@ -130,25 +137,30 @@ def check_domain_age(
                 f"Registration date unavailable for {domain}. "
                 f"MX records: {mx_records}"
             ),
-            source="https://lookup.icann.org/en",
+            source=BOOTSTRAP_URL,
             verdict=Verdict.COULD_NOT_VERIFY,
+            finding_type=FindingType.UNKNOWN,
             confidence_note=(
-                "Registration data was unavailable. "
-                "No domain-age conclusion can be made."
+                "Registration evidence was unavailable. "
+                "MX records do not authenticate the sender."
             ),
         )
 
-    now = datetime.now(timezone.utc)
-    age_days = (now - registration_date).days
+    age_days = (
+        datetime.now(timezone.utc) - registration_date
+    ).days
 
     if age_days < 0:
         return CheckResult(
             claim=claim,
             check_name="domain_age",
             finding="Registration date is in the future.",
-            source="https://lookup.icann.org/en",
+            source=BOOTSTRAP_URL,
             verdict=Verdict.COULD_NOT_VERIFY,
-            confidence_note="Registration data is inconsistent.",
+            finding_type=FindingType.UNKNOWN,
+            confidence_note=(
+                "Registration data requires manual review."
+            ),
         )
 
     finding = (
@@ -159,23 +171,25 @@ def check_domain_age(
     )
 
     if age_days < 30:
-        verdict = Verdict.INCONSISTENT
+        finding_type = FindingType.RISK_SIGNAL
         note = (
-            "Recently registered domain is a risk signal, "
-            "not proof of fraud."
+            "Recently registered domain is a caution signal, "
+            "not proof of fraud or a contradiction."
         )
     else:
-        verdict = Verdict.COULD_NOT_VERIFY
+        finding_type = FindingType.UNKNOWN
         note = (
             "Domain age alone cannot verify an offer "
-            "or sender authenticity."
+            "or the sender's identity."
         )
 
     return CheckResult(
         claim=claim,
         check_name="domain_age",
         finding=finding,
-        source="https://lookup.icann.org/en",
-        verdict=verdict,
+        source=BOOTSTRAP_URL,
+        verdict=Verdict.COULD_NOT_VERIFY,
+        finding_type=finding_type,
         confidence_note=note,
     )
+
